@@ -48,6 +48,9 @@ public class RepositorioDeMovimientos(ContextoDeTrasiego contexto) : IRepositori
         return Importe.De(suma ?? 0m);
     }
 
+    public Task<bool> TieneMovimientos(Guid articuloId, CancellationToken cancelacion = default) =>
+        contexto.Movimientos.AnyAsync(m => m.ArticuloId == articuloId, cancelacion);
+
     public async Task<IReadOnlyList<Movimiento>> Listar(
         Guid articuloId,
         Guid almacenId,

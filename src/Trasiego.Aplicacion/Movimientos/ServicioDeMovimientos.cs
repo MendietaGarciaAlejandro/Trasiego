@@ -42,9 +42,19 @@ public class ServicioDeMovimientos(
 
         movimientos.Agregar(entrada);
 
-        valoracion.Agregar(new CapaDeExistencias(
-            articulo.Id, almacen.Id, entrada.Id, cantidad, coste,
-            fechaContable, entrada.MomentoDeRegistro));
+        // Aqui es donde se separan los dos metodos, y en ningun otro sitio. FIFO abre una
+        // capa por entrada para poder sacar cada una a su coste; el precio medio las mete
+        // todas en la que ya estaba abierta, y esa mezcla es la media ponderada.
+        var abierta = articulo.Metodo is MetodoDeValoracion.PrecioMedio
+            ? await valoracion.CapaAbierta(articulo.Id, almacen.Id, cancelacion)
+            : null;
+
+        if (abierta is null)
+            valoracion.Agregar(new CapaDeExistencias(
+                articulo.Id, almacen.Id, entrada.Id, cantidad, coste,
+                fechaContable, entrada.MomentoDeRegistro));
+        else
+            abierta.Absorber(cantidad, coste);
 
         await unidadDeTrabajo.GuardarCambios(cancelacion);
         return entrada;
@@ -73,7 +83,7 @@ public class ServicioDeMovimientos(
                 $"quedan {hay} {articulo.Unidad.Abreviatura()} y se piden {cantidad}.");
 
         var capas = await valoracion.CapasConExistencias(articulo.Id, almacen.Id, cancelacion);
-        var tomas = ValoracionFifo.Consumir(capas, cantidad);
+        var tomas = ConsumoDeCapas.Consumir(capas, cantidad);
 
         var coste = tomas.Aggregate(Importe.Cero, (suma, toma) => suma + toma.Coste);
 

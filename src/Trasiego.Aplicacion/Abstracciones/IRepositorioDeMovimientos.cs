@@ -26,6 +26,8 @@ public interface IRepositorioDeMovimientos
         Guid almacenId,
         CancellationToken cancelacion = default);
 
+    Task<bool> TieneMovimientos(Guid articuloId, CancellationToken cancelacion = default);
+
     /// <summary>
     /// Los movimientos en el orden en que cuentan: por fecha contable, y a igualdad de
     /// fecha, por el momento en que se registraron.

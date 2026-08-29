@@ -15,6 +15,15 @@ public interface IRepositorioDeValoracion
         Guid almacenId,
         CancellationToken cancelacion = default);
 
+    /// <summary>
+    /// La capa que sigue teniendo existencias, o nada si no hay. A precio medio solo puede
+    /// haber una, y es a la que van a parar las entradas siguientes.
+    /// </summary>
+    Task<CapaDeExistencias?> CapaAbierta(
+        Guid articuloId,
+        Guid almacenId,
+        CancellationToken cancelacion = default);
+
     /// <summary>Lo que vale ahora mismo lo que queda en el almacen.</summary>
     Task<Importe> ValorDeLasExistencias(
         Guid articuloId,

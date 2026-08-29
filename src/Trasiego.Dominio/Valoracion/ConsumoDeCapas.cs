@@ -6,12 +6,18 @@ namespace Trasiego.Dominio.Valoracion;
 /// <summary>Lo que se saca de cada capa para cubrir una salida.</summary>
 public readonly record struct TomaDeCapa(Guid CapaId, Cantidad Cantidad, Importe Coste);
 
-public static class ValoracionFifo
+public static class ConsumoDeCapas
 {
     /// <summary>
     /// Vacia capas por orden de antiguedad hasta cubrir la cantidad pedida, y deja dicho
     /// cuanto salio de cada una y a que coste.
     /// </summary>
+    /// <remarks>
+    /// Esto vale igual para los dos metodos de valoracion, y no por casualidad: a precio
+    /// medio solo hay una capa abierta, asi que recorrer capas por antiguedad se queda en
+    /// recorrer una, y sacar una parte proporcional de ella es exactamente la media
+    /// ponderada. Lo que cambia entre un metodo y otro es la entrada, no la salida.
+    /// </remarks>
     public static IReadOnlyList<TomaDeCapa> Consumir(
         IEnumerable<CapaDeExistencias> capas,
         Cantidad cantidad)

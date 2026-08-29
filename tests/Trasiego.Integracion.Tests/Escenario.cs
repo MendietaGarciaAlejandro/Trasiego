@@ -2,6 +2,7 @@ using Microsoft.Extensions.Time.Testing;
 using Trasiego.Aplicacion.Movimientos;
 using Trasiego.Dominio.Almacenes;
 using Trasiego.Dominio.Catalogo;
+using Trasiego.Dominio.Valoracion;
 using Trasiego.Infraestructura.Persistencia;
 using Trasiego.Infraestructura.Persistencia.Repositorios;
 
@@ -26,11 +27,12 @@ internal static class Escenario
 
     public static async Task<(Articulo Articulo, Almacen Almacen)> Catalogo(
         ContextoDeTrasiego contexto,
-        UnidadDeMedida unidad = UnidadDeMedida.Unidad)
+        UnidadDeMedida unidad = UnidadDeMedida.Unidad,
+        MetodoDeValoracion metodo = MetodoDeValoracion.Fifo)
     {
         var numero = Interlocked.Increment(ref _siguiente);
 
-        var articulo = new Articulo($"ART-{numero}", $"Articulo {numero}", unidad);
+        var articulo = new Articulo($"ART-{numero}", $"Articulo {numero}", unidad, metodo);
         await new RepositorioDeArticulos(contexto).Alta(articulo);
 
         var almacen = new Almacen($"A{numero}", $"Almacen {numero}");

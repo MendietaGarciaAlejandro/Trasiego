@@ -23,6 +23,18 @@ public class RepositorioDeValoracion(ContextoDeTrasiego contexto) : IRepositorio
             .ThenBy(c => c.Id)
             .ToListAsync(cancelacion);
 
+    public async Task<CapaDeExistencias?> CapaAbierta(
+        Guid articuloId,
+        Guid almacenId,
+        CancellationToken cancelacion = default) =>
+        await contexto.Capas
+            .Where(c => c.ArticuloId == articuloId && c.AlmacenId == almacenId)
+            .Where(c => c.CantidadRestante != Cantidad.Cero)
+            .OrderBy(c => c.FechaContable)
+            .ThenBy(c => c.MomentoDeRegistro)
+            .ThenBy(c => c.Id)
+            .FirstOrDefaultAsync(cancelacion);
+
     public async Task<Importe> ValorDeLasExistencias(
         Guid articuloId,
         Guid almacenId,

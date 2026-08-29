@@ -1,9 +1,14 @@
 using Trasiego.Dominio.Comun;
+using Trasiego.Dominio.Valoracion;
 using Trasiego.Dominio.Valores;
 
 namespace Trasiego.Dominio.Catalogo;
 
-public class Articulo(string referencia, string nombre, UnidadDeMedida unidad)
+public class Articulo(
+    string referencia,
+    string nombre,
+    UnidadDeMedida unidad,
+    MetodoDeValoracion metodo = MetodoDeValoracion.Fifo)
 {
     // Version 7 en vez de la 4 de siempre: lleva la marca de tiempo delante, asi que los
     // ids salen casi ordenados y SQL Server no anda partiendo paginas del indice agrupado
@@ -18,6 +23,11 @@ public class Articulo(string referencia, string nombre, UnidadDeMedida unidad)
 
     public UnidadDeMedida Unidad { get; private set; } = unidad;
 
+    // El criterio va por articulo y no por almacen: es lo que exige poder explicar una
+    // valoracion, y mover el mismo material de un almacen a otro no puede cambiar lo que
+    // vale.
+    public MetodoDeValoracion Metodo { get; private set; } = metodo;
+
     public bool Activo { get; private set; } = true;
 
     public void Renombrar(string nombre) =>
@@ -29,6 +39,20 @@ public class Articulo(string referencia, string nombre, UnidadDeMedida unidad)
     {
         if (!Activo) throw new Conflicto($"El articulo {Referencia} ya estaba de baja.");
         Activo = false;
+    }
+
+    /// <summary>
+    /// Cambia el criterio de valoracion. Solo mientras el articulo no tenga historico: si ya
+    /// se ha valorado una salida con un criterio, cambiarlo deja el almacen contando una
+    /// cosa y los movimientos otra.
+    /// </summary>
+    public void CambiarMetodo(MetodoDeValoracion metodo, bool tieneMovimientos)
+    {
+        if (tieneMovimientos)
+            throw new Conflicto(
+                $"{Referencia} ya tiene movimientos: su criterio de valoracion no se toca.");
+
+        Metodo = metodo;
     }
 
     public void ComprobarCantidad(Cantidad cantidad)

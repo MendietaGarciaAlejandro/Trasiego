@@ -14,6 +14,7 @@ public class ConfiguracionDeArticulo : IEntityTypeConfiguration<Articulo>
         articulo.Property(a => a.Referencia).HasMaxLength(40).IsRequired();
         articulo.Property(a => a.Nombre).HasMaxLength(200).IsRequired();
         articulo.Property(a => a.Unidad).HasConversion<int>();
+        articulo.Property(a => a.Metodo).HasConversion<int>();
 
         // La referencia es lo que teclea quien da de alta un movimiento, asi que la unicidad
         // la impone la base de datos y no una consulta previa: dos altas a la vez con la

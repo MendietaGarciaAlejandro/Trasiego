@@ -55,6 +55,20 @@ public class CapaDeExistencias
 
     public bool Agotada => CantidadRestante.EsCero;
 
+    /// <summary>
+    /// Mete otra entrada en esta misma capa. Es lo unico que distingue al precio medio de
+    /// FIFO: en vez de abrir una capa por entrada, todas caen en la que ya estaba abierta,
+    /// y sacar de ella una parte proporcional ya es la media ponderada.
+    /// </summary>
+    public void Absorber(Cantidad cantidad, Importe coste)
+    {
+        CantidadInicial += cantidad;
+        CosteInicial += coste;
+
+        CantidadRestante += cantidad;
+        CosteRestante += coste;
+    }
+
     /// <summary>Saca cantidad de la capa y devuelve lo que vale lo que sale.</summary>
     public Importe Consumir(Cantidad cuanto)
     {

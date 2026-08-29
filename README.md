@@ -141,6 +141,23 @@ Cada salida deja además una fila por capa de la que sacó algo. Sin eso, el cos
 salida es un número sin explicación, y no habría manera de devolver material al precio al que
 entró.
 
+### Precio medio es FIFO con una sola capa
+
+Los dos criterios comparten casi todo el código, y no por ahorrar sino porque son lo mismo
+visto de otra manera. FIFO abre una capa por entrada para poder sacar cada una a su coste;
+precio medio mete todas las entradas en la capa que ya estaba abierta. Sacar una parte
+proporcional de esa capa única *es* la media ponderada.
+
+Así que **lo que cambia entre un método y otro es la entrada, no la salida**: el código que
+consume capas por antigüedad vale igual para los dos, porque a precio medio recorrer las
+capas abiertas se queda en recorrer una.
+
+El criterio va por artículo y no por almacén. Mover el mismo material de un almacén a otro no
+puede cambiar lo que vale, y la norma contable pide poder explicar con qué criterio se ha
+valorado cada cosa. Y no se cambia una vez el artículo tiene movimientos: si ya se ha
+valorado una salida con un criterio, cambiarlo deja el almacén contando una cosa y los
+movimientos otra.
+
 ### Lo que entra se teclea en total, no por unidad
 
 Una entrada pide lo que costó entera, no lo que cuesta cada unidad. Si se pidiera el precio
