@@ -212,6 +212,21 @@ public class ServicioDeMovimientos(
         return movimiento;
     }
 
+    /// <summary>El historico de un articulo en un almacen, en el orden en que cuenta.</summary>
+    public Task<IReadOnlyList<Movimiento>> Historico(
+        Guid articuloId,
+        Guid almacenId,
+        CancellationToken cancelacion = default) =>
+        movimientos.Listar(articuloId, almacenId, null, false, cancelacion);
+
+    /// <summary>Lo que hay y lo que vale.</summary>
+    public async Task<(Saldo Saldo, Importe Valor)> Existencias(
+        Guid articuloId,
+        Guid almacenId,
+        CancellationToken cancelacion = default) =>
+        (await movimientos.SaldoDe(articuloId, almacenId, cancelacion: cancelacion),
+         await valoracion.ValorDeLasExistencias(articuloId, almacenId, cancelacion));
+
     private Movimiento Meter(
         Articulo articulo,
         Almacen almacen,

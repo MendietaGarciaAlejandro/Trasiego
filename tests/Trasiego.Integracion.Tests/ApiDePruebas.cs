@@ -1,0 +1,28 @@
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+
+namespace Trasiego.Integracion.Tests;
+
+/// <summary>
+/// Levanta la Api de verdad contra la base de datos de las pruebas. Lo que interesa probar
+/// por aqui no son las reglas, que ya tienen sus tests, sino el borde: que cada fallo salga
+/// con el codigo que le toca y con el mensaje entero.
+/// </summary>
+public sealed class ApiDePruebas(string cadenaDeConexion) : WebApplicationFactory<Program>
+{
+    protected override IHost CreateHost(IHostBuilder constructor)
+    {
+        constructor.UseEnvironment("Development");
+
+        constructor.ConfigureHostConfiguration(configuracion =>
+            configuracion.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:Trasiego"] = cadenaDeConexion,
+                }));
+
+        return base.CreateHost(constructor);
+    }
+}

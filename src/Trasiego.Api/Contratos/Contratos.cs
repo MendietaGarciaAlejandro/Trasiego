@@ -1,0 +1,153 @@
+using Trasiego.Aplicacion.Cierres;
+using Trasiego.Dominio.Almacenes;
+using Trasiego.Dominio.Catalogo;
+using Trasiego.Dominio.Cierres;
+using Trasiego.Dominio.Movimientos;
+using Trasiego.Dominio.Valoracion;
+
+namespace Trasiego.Api.Contratos;
+
+// Lo que entra y lo que sale de la Api va en decimal y no en Cantidad ni Importe. Esos tipos
+// existen para que dentro no se pueda operar mal con ellos; fuera solo estorbarian, porque
+// serializados serian un objeto con un campo dentro.
+
+public record EstadoDeSalud(string Estado);
+
+// ---- Catalogo -----------------------------------------------------------------------
+
+public record AltaDeArticulo(
+    string Referencia,
+    string Nombre,
+    UnidadDeMedida Unidad,
+    MetodoDeValoracion Metodo = MetodoDeValoracion.Fifo);
+
+public record CambioDeMetodo(MetodoDeValoracion Metodo);
+
+public record ArticuloVisto(
+    Guid Id,
+    string Referencia,
+    string Nombre,
+    UnidadDeMedida Unidad,
+    MetodoDeValoracion Metodo,
+    bool Activo)
+{
+    public static ArticuloVisto De(Articulo articulo) => new(
+        articulo.Id, articulo.Referencia, articulo.Nombre,
+        articulo.Unidad, articulo.Metodo, articulo.Activo);
+}
+
+public record AltaDeAlmacen(string Codigo, string Nombre, bool PermiteDescubierto = false);
+
+public record AlmacenVisto(
+    Guid Id,
+    string Codigo,
+    string Nombre,
+    bool PermiteDescubierto,
+    bool Activo)
+{
+    public static AlmacenVisto De(Almacen almacen) => new(
+        almacen.Id, almacen.Codigo, almacen.Nombre,
+        almacen.PermiteDescubierto, almacen.Activo);
+}
+
+// ---- Movimientos --------------------------------------------------------------------
+
+public record EntradaPedida(
+    Guid ArticuloId,
+    Guid AlmacenId,
+    decimal Cantidad,
+    decimal Coste,
+    DateOnly FechaContable,
+    string? Concepto = null);
+
+public record SalidaPedida(
+    Guid ArticuloId,
+    Guid AlmacenId,
+    decimal Cantidad,
+    DateOnly FechaContable,
+    string? Concepto = null);
+
+public record DevolucionPedida(
+    Guid SalidaId,
+    decimal Cantidad,
+    DateOnly FechaContable,
+    string? Concepto = null);
+
+public record RecuentoPedido(
+    Guid ArticuloId,
+    Guid AlmacenId,
+    decimal Contada,
+    DateOnly FechaContable,
+    string? Concepto = null);
+
+public record MovimientoVisto(
+    Guid Id,
+    Guid ArticuloId,
+    Guid AlmacenId,
+    TipoDeMovimiento Tipo,
+    MotivoDeMovimiento Motivo,
+    decimal Cantidad,
+    decimal Coste,
+    DateOnly FechaContable,
+    DateTimeOffset MomentoDeRegistro,
+    string? Concepto,
+    bool Retroactivo)
+{
+    public static MovimientoVisto De(Movimiento movimiento) => new(
+        movimiento.Id, movimiento.ArticuloId, movimiento.AlmacenId,
+        movimiento.Tipo, movimiento.Motivo,
+        movimiento.Cantidad.Valor, movimiento.Coste.Visible,
+        movimiento.FechaContable, movimiento.MomentoDeRegistro,
+        movimiento.Concepto, movimiento.Retroactivo);
+}
+
+public record ExistenciasVistas(Guid ArticuloId, Guid AlmacenId, decimal Saldo, decimal Valor);
+
+// ---- Cierres y recalculo ------------------------------------------------------------
+
+public record CierrePedido(Guid AlmacenId, DateOnly Hasta, string? Concepto = null);
+
+public record CierreVisto(
+    Guid Id,
+    Guid AlmacenId,
+    DateOnly Hasta,
+    DateTimeOffset MomentoDeCierre,
+    string? Concepto)
+{
+    public static CierreVisto De(Cierre cierre) => new(
+        cierre.Id, cierre.AlmacenId, cierre.Hasta, cierre.MomentoDeCierre, cierre.Concepto);
+}
+
+public record DescuadreVisto(
+    Guid ArticuloId,
+    decimal CantidadDeclarada,
+    decimal CantidadAhora,
+    decimal ValorDeclarado,
+    decimal ValorAhora)
+{
+    public static DescuadreVisto De(Descuadre descuadre) => new(
+        descuadre.ArticuloId,
+        descuadre.CantidadDeclarada.Valor, descuadre.CantidadAhora.Valor,
+        descuadre.ValorDeclarado.Visible, descuadre.ValorAhora.Visible);
+}
+
+public record SalidaDescuadrada(
+    Guid MovimientoId,
+    decimal Registrado,
+    decimal Reproducido,
+    decimal Diferencia);
+
+public record ReproduccionVista(
+    decimal Cantidad,
+    decimal Valor,
+    IReadOnlyList<SalidaDescuadrada> Descuadradas)
+{
+    public static ReproduccionVista De(Reproduccion reproduccion) => new(
+        reproduccion.Cantidad.Valor,
+        reproduccion.Valor.Visible,
+        [.. reproduccion.Descuadradas.Select(salida => new SalidaDescuadrada(
+            salida.MovimientoId,
+            salida.Registrado.Visible,
+            salida.Reproducido.Visible,
+            salida.Diferencia.Visible))]);
+}

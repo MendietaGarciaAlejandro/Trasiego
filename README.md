@@ -19,7 +19,7 @@ Todo lo demás del proyecto está para que esa frase siga siendo verdad.
 - .NET 10, capas separadas (Dominio, Aplicación, Infraestructura, Api)
 - SQL Server 2022 y EF Core 10
 - xUnit; los tests de integración corren sobre LocalDB
-- Scalar para probar la API a mano (`/scalar` en desarrollo)
+- ASP.NET Core con controllers, y Scalar para probarla a mano (`/scalar` en desarrollo)
 - Más adelante, Blazor: primero escritorio con BlazorWebView, luego web con los mismos componentes
 
 ## Cómo levantarlo
@@ -37,7 +37,7 @@ La cadena de conexión de desarrollo está en `appsettings.Development.json` y a
 no hay ningún secreto que guardar: no lleva usuario ni contraseña. En producción sí saldría
 de user-secrets o de una variable de entorno.
 
-`dotnet test` ejecuta todo (unos 110 tests). Los tests de dominio no tocan la base de datos y son
+`dotnet test` ejecuta todo (unos 118 tests). Los de la API levantan la aplicación entera con `WebApplicationFactory` contra la misma base de datos de pruebas. Los tests de dominio no tocan la base de datos y son
 instantáneos; los de integración crean una base de datos suya en LocalDB al empezar y la
 borran al terminar.
 
@@ -313,6 +313,23 @@ bloque.
 Hay tests con diez peticiones simultáneas: sobre cinco unidades entran cinco y las otras
 cinco se van con un aviso claro; sobre diez entran las diez y el almacén queda a cero exacto;
 y con capas de coste distinto, cinco salen a 1 € y cinco a 9 €.
+
+### Los errores los lee alguien de almacén
+
+Los fallos de negocio salen como ProblemDetails con el mensaje entero, tal y como lo escribió
+quien puso la regla. `No hay bastante DEMO-1 en CEN: quedan 6 ud y se piden 20.` sale con un
+422, no con un 500 y un texto genérico.
+
+Cada tipo de excepción tiene su código: `NoEncontrado` va a 404, `Conflicto` a 409 y
+`ReglaDeNegocio` a 422. Y las `ArgumentException`, que nacieron para avisar de errores de
+programación, en el borde de la API las provoca quien manda una cantidad negativa o una
+referencia en blanco, así que ahí valen como 400.
+
+Lo que entra y sale de la API va en `decimal`, no en `Cantidad` ni `Importe`. Esos tipos
+existen para que dentro no se pueda operar mal con ellos; fuera solo estorbarían, porque
+serializados serían un objeto con un campo dentro. Los enums sí viajan por su nombre: un
+`"Fifo"` se entiende leyendo la respuesta y un `1` no, y además ata al cliente al orden en que
+están declarados.
 
 ### El saldo lleva signo y la cantidad no
 
