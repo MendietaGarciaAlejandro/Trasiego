@@ -1,0 +1,126 @@
+@page "/valoracion"
+@inject ClienteDeTrasiego trasiego
+
+<h1>Valoracion a fecha</h1>
+
+<section class="eleccion">
+    <label>
+        Almacen
+        <select @bind="almacenId" @bind:after="Cargar">
+            <option value="@Guid.Empty">— elige —</option>
+            @foreach (var almacen in almacenes)
+            {
+                <option value="@almacen.Id">@almacen.Codigo · @almacen.Nombre</option>
+            }
+        </select>
+    </label>
+
+    <label>
+        A dia
+        <input type="date" @bind="fecha" @bind:after="Cargar" />
+    </label>
+
+    @if (valoracion is not null)
+    {
+        <div class="resumen">
+            <div>
+                <span class="rotulo">Valia</span>
+                <strong class="@(valoracion.Total < 0 ? "negativo" : "")">
+                    @Dinero(valoracion.Total)
+                </strong>
+            </div>
+        </div>
+    }
+</section>
+
+<p class="pista">
+    No reconstruye nada: como cada movimiento lleva su coste, sumar los movimientos hasta esa
+    fecha ya es lo que valia el almacen ese dia. Si la fecha esta por debajo del ultimo cierre,
+    ademas es un numero que ya no puede cambiar.
+</p>
+
+@if (aviso is not null)
+{
+    <p class="aviso">@aviso</p>
+}
+
+@if (valoracion is null)
+{
+    <p class="vacio">Elige un almacen.</p>
+}
+else if (valoracion.Lineas.Count == 0)
+{
+    <p class="vacio">Ese dia no habia nada en ese almacen.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Referencia</th>
+                <th>Articulo</th>
+                <th class="numero">Cantidad</th>
+                <th class="numero">Valor</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var linea in valoracion.Lineas)
+            {
+                <tr>
+                    <td class="clave">@linea.Referencia</td>
+                    <td>@linea.Nombre</td>
+                    <td class="numero @(linea.Cantidad < 0 ? "negativo" : "")">
+                        @Numero(linea.Cantidad)
+                    </td>
+                    <td class="numero @(linea.Valor < 0 ? "negativo" : "")">
+                        @Dinero(linea.Valor)
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3">Total</td>
+                <td class="numero">@Dinero(valoracion.Total)</td>
+            </tr>
+        </tfoot>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<AlmacenVisto> almacenes = [];
+    private ValoracionVista? valoracion;
+
+    private Guid almacenId;
+    private DateOnly fecha = DateOnly.FromDateTime(DateTime.Now);
+
+    private string? aviso;
+
+    protected override async Task OnInitializedAsync() =>
+        almacenes = await trasiego.Almacenes();
+
+    private async Task Cargar()
+    {
+        aviso = null;
+
+        if (almacenId == Guid.Empty)
+        {
+            valoracion = null;
+            return;
+        }
+
+        try
+        {
+            valoracion = await trasiego.Valoracion(almacenId, fecha);
+        }
+        catch (FalloDeTrasiego fallo)
+        {
+            valoracion = null;
+            aviso = fallo.Message;
+        }
+    }
+
+    private static string Numero(decimal valor) => valor.ToString("#,##0.####");
+
+    private static string Dinero(decimal valor) => valor.ToString("#,##0.00 €");
+}

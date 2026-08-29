@@ -143,6 +143,18 @@ public record DescuadreVisto(
 {
 }
 
+public record LineaDeValoracionVista(
+    Guid ArticuloId,
+    string Referencia,
+    string Nombre,
+    decimal Cantidad,
+    decimal Valor);
+
+public record ValoracionVista(
+    DateOnly Fecha,
+    decimal Total,
+    IReadOnlyList<LineaDeValoracionVista> Lineas);
+
 public record SalidaDescuadrada(
     Guid MovimientoId,
     decimal Registrado,

@@ -26,14 +26,6 @@ public interface IRepositorioDeCierres
         Guid cierreId,
         CancellationToken cancelacion = default);
 
-    /// <summary>
-    /// Lo que dicen los movimientos que habia en un almacen a una fecha, articulo a articulo.
-    /// </summary>
-    Task<IReadOnlyList<SaldoCalculado>> SaldosA(
-        Guid almacenId,
-        DateOnly fecha,
-        CancellationToken cancelacion = default);
+    /// <summary>Los cierres de un almacen, del mas reciente al mas antiguo.</summary>
+    Task<IReadOnlyList<Cierre>> DeAlmacen(Guid almacenId, CancellationToken cancelacion = default);
 }
-
-/// <summary>Una fila del recuento que sale de sumar movimientos hasta una fecha.</summary>
-public record SaldoCalculado(Guid ArticuloId, decimal Cantidad, decimal Valor);

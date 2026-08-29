@@ -6,6 +6,7 @@ using Trasiego.Api.Errores;
 using Trasiego.Aplicacion.Almacenes;
 using Trasiego.Aplicacion.Catalogo;
 using Trasiego.Aplicacion.Cierres;
+using Trasiego.Aplicacion.Informes;
 using Trasiego.Aplicacion.Movimientos;
 using Trasiego.Aplicacion.Valoracion;
 using Trasiego.Contratos;
@@ -33,6 +34,7 @@ constructor.Services.AddScoped<ServicioDeArticulos>();
 constructor.Services.AddScoped<ServicioDeAlmacenes>();
 constructor.Services.AddScoped<ServicioDeMovimientos>();
 constructor.Services.AddScoped<ServicioDeCierres>();
+constructor.Services.AddScoped<ServicioDeInformes>();
 constructor.Services.AddScoped<ServicioDeRecalculo>();
 constructor.Services.AddSingleton(TimeProvider.System);
 

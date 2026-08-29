@@ -44,7 +44,7 @@ Para el escritorio, con la Api levantada:
 dotnet run --project src/Trasiego.Escritorio
 ```
 
-`dotnet test` ejecuta todo (unos 118 tests). Los de la API levantan la aplicación entera con `WebApplicationFactory` contra la misma base de datos de pruebas. Los tests de dominio no tocan la base de datos y son
+`dotnet test` ejecuta todo (unos 122 tests). Los de la API levantan la aplicación entera con `WebApplicationFactory` contra la misma base de datos de pruebas. Los tests de dominio no tocan la base de datos y son
 instantáneos; los de integración crean una base de datos suya en LocalDB al empezar y la
 borran al terminar.
 
@@ -359,6 +359,17 @@ una herramienta de almacén: lo que tiene que hacer bien es enseñar muchas fila
 que se lean de un vistazo. Las cifras van a la derecha y con los dígitos del mismo ancho, que
 es lo que deja comparar una columna sin ir leyéndola; lo que está en negativo va en rojo, y
 los movimientos que llegaron tarde llevan su marca.
+
+### El informe de valoración no calcula nada
+
+Preguntar cuánto valía un almacén el 31 de marzo es un `GROUP BY` sobre los movimientos hasta
+esa fecha. No reconstruye capas, no reproduce nada. Eso es consecuencia directa de que cada
+movimiento lleve su coste, y es el motivo por el que en la fase 0 se decidió guardarlo así.
+
+Un artículo que quedó a cero de cantidad y de valor no sale en el informe. Uno que quedó a
+cero de cantidad **pero con valor** sí, porque eso es exactamente la diferencia que deja un
+descubierto tapado por encima o por debajo de lo que costó, y esconderla sería mentir sobre
+el total.
 
 ### El saldo lleva signo y la cantidad no
 

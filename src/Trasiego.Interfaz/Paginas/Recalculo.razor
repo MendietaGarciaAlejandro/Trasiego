@@ -1,0 +1,178 @@
+@page "/recalculo"
+@inject ClienteDeTrasiego trasiego
+
+<h1>Recalculo</h1>
+
+<section class="eleccion">
+    <label>
+        Almacen
+        <select @bind="almacenId" @bind:after="Cargar">
+            <option value="@Guid.Empty">— elige —</option>
+            @foreach (var almacen in almacenes)
+            {
+                <option value="@almacen.Id">@almacen.Codigo · @almacen.Nombre</option>
+            }
+        </select>
+    </label>
+</section>
+
+<p class="pista">
+    Aqui salen los articulos que tienen algun movimiento que llego con fecha anterior a lo que
+    ya estaba registrado. Eso no cambia lo ya valorado, pero significa que su valoracion no es
+    la que saldria de reproducir el historico en orden. Comparar solo mira; aplicar deshace lo
+    que hay por encima del ultimo cierre y lo reconstruye.
+</p>
+
+@if (aviso is not null)
+{
+    <p class="aviso">@aviso</p>
+}
+
+@if (sospechosos is null)
+{
+    <p class="vacio">Elige un almacen.</p>
+}
+else if (sospechosos.Count == 0)
+{
+    <p class="bien">Por ahi no ha llegado nada tarde: no hay nada que recalcular.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Referencia</th>
+                <th>Articulo</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var articuloId in sospechosos)
+            {
+                <tr>
+                    <td class="clave">@Referencia(articuloId)</td>
+                    <td>@Nombre(articuloId)</td>
+                    <td class="acciones">
+                        <button @onclick="() => Comparar(articuloId)" disabled="@ocupado">
+                            Comparar
+                        </button>
+                        <button class="principal" @onclick="() => Aplicar(articuloId)"
+                                disabled="@ocupado">
+                            Aplicar
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (reproduccion is not null)
+{
+    <h2 class="titulo">@titulo</h2>
+
+    @if (reproduccion.Descuadradas.Count == 0)
+    {
+        <p class="bien">
+            Reproducido: quedan @Numero(reproduccion.Cantidad) por
+            @Dinero(reproduccion.Valor), lo mismo que hay registrado.
+        </p>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>Salida</th>
+                    <th class="numero">Se valoro en</th>
+                    <th class="numero">Habria costado</th>
+                    <th class="numero">Diferencia</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var salida in reproduccion.Descuadradas)
+                {
+                    <tr>
+                        <td>@salida.MovimientoId.ToString()[..8]</td>
+                        <td class="numero">@Dinero(salida.Registrado)</td>
+                        <td class="numero">@Dinero(salida.Reproducido)</td>
+                        <td class="numero @(salida.Diferencia < 0 ? "negativo" : "")">
+                            @Dinero(salida.Diferencia)
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private IReadOnlyList<AlmacenVisto> almacenes = [];
+    private IReadOnlyList<ArticuloVisto> articulos = [];
+    private IReadOnlyList<Guid>? sospechosos;
+    private ReproduccionVista? reproduccion;
+
+    private Guid almacenId;
+    private string titulo = "";
+
+    private string? aviso;
+    private bool ocupado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        almacenes = await trasiego.Almacenes();
+        articulos = await trasiego.Articulos(incluirBajas: true);
+    }
+
+    private async Task Cargar()
+    {
+        reproduccion = null;
+        aviso = null;
+
+        sospechosos = almacenId == Guid.Empty ? null : await trasiego.Sospechosos(almacenId);
+    }
+
+    private Task Comparar(Guid articuloId) => Mirar(
+        articuloId,
+        $"Lo que habria salido en {Referencia(articuloId)}",
+        () => trasiego.Comparar(articuloId, almacenId));
+
+    private Task Aplicar(Guid articuloId) => Mirar(
+        articuloId,
+        $"{Referencia(articuloId)}, ya reconstruido",
+        () => trasiego.Aplicar(articuloId, almacenId));
+
+    private async Task Mirar(
+        Guid articuloId,
+        string comoSeLlama,
+        Func<Task<ReproduccionVista>> operacion)
+    {
+        ocupado = true;
+        aviso = null;
+
+        try
+        {
+            reproduccion = await operacion();
+            titulo = comoSeLlama;
+        }
+        catch (FalloDeTrasiego fallo)
+        {
+            reproduccion = null;
+            aviso = fallo.Message;
+        }
+        finally
+        {
+            ocupado = false;
+        }
+    }
+
+    private string Referencia(Guid articuloId) => articulos
+        .FirstOrDefault(articulo => articulo.Id == articuloId)?.Referencia ?? "?";
+
+    private string Nombre(Guid articuloId) => articulos
+        .FirstOrDefault(articulo => articulo.Id == articuloId)?.Nombre ?? "";
+
+    private static string Numero(decimal valor) => valor.ToString("#,##0.####");
+
+    private static string Dinero(decimal valor) => valor.ToString("#,##0.00 €");
+}

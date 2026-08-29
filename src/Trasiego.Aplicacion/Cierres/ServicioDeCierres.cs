@@ -16,6 +16,7 @@ public record Descuadre(
 public class ServicioDeCierres(
     IRepositorioDeAlmacenes almacenes,
     IRepositorioDeCierres cierres,
+    IRepositorioDeMovimientos movimientos,
     IRepositorioDeValoracion valoracion,
     IUnidadDeTrabajo unidadDeTrabajo,
     TimeProvider reloj)
@@ -62,7 +63,7 @@ public class ServicioDeCierres(
         // El valor a una fecha es la suma de los movimientos hasta esa fecha, sin reconstruir
         // capas ni nada: como cada movimiento lleva su coste, esto es un group by. Lo que
         // aporta el cierre es la garantia de que esa suma ya no va a cambiar.
-        foreach (var saldo in await cierres.SaldosA(almacen.Id, hasta, cancelacion))
+        foreach (var saldo in await movimientos.SaldosA(almacen.Id, hasta, cancelacion))
             cierres.Agregar(new SaldoDeCierre(
                 cierre.Id, saldo.ArticuloId, Saldo.De(saldo.Cantidad), Importe.De(saldo.Valor)));
 
@@ -75,6 +76,12 @@ public class ServicioDeCierres(
     /// declaro entonces. Deberia salir vacio siempre; si sale algo, alguien ha tocado el
     /// pasado por debajo del cierre.
     /// </summary>
+    /// <summary>Los cierres de un almacen, del mas reciente al mas antiguo.</summary>
+    public Task<IReadOnlyList<Cierre>> DeAlmacen(
+        Guid almacenId,
+        CancellationToken cancelacion = default) =>
+        cierres.DeAlmacen(almacenId, cancelacion);
+
     public async Task<IReadOnlyList<Descuadre>> Comprobar(
         Guid cierreId,
         CancellationToken cancelacion = default)
@@ -83,7 +90,7 @@ public class ServicioDeCierres(
             ?? throw new NoEncontrado("No existe ese cierre.");
 
         var declarados = await cierres.SaldosDe(cierreId, cancelacion);
-        var ahora = (await cierres.SaldosA(cierre.AlmacenId, cierre.Hasta, cancelacion))
+        var ahora = (await movimientos.SaldosA(cierre.AlmacenId, cierre.Hasta, cancelacion))
             .ToDictionary(fila => fila.ArticuloId);
 
         var descuadres = new List<Descuadre>();

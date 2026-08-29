@@ -1,0 +1,202 @@
+@page "/cierres"
+@inject ClienteDeTrasiego trasiego
+
+<h1>Cierres</h1>
+
+<section class="eleccion">
+    <label>
+        Almacen
+        <select @bind="almacenId" @bind:after="Cargar">
+            <option value="@Guid.Empty">— elige —</option>
+            @foreach (var almacen in almacenes)
+            {
+                <option value="@almacen.Id">@almacen.Codigo · @almacen.Nombre</option>
+            }
+        </select>
+    </label>
+</section>
+
+@if (almacenId != Guid.Empty)
+{
+    <section class="ficha">
+        <h2>Cerrar</h2>
+
+        <div class="formulario">
+            <label>
+                Hasta el dia
+                <input type="date" @bind="hasta" />
+            </label>
+            <label class="ancha">
+                Concepto
+                <input @bind="concepto" placeholder="cierre de marzo" />
+            </label>
+
+            <button class="principal" @onclick="Cerrar" disabled="@ocupado">Cerrar</button>
+        </div>
+
+        <p class="pista">
+            Por debajo de esa fecha el almacen deja de admitir movimientos, y eso es lo que
+            convierte su valoracion en un dato que ya no puede cambiar. No hay vuelta atras.
+        </p>
+
+        @if (aviso is not null)
+        {
+            <p class="aviso">@aviso</p>
+        }
+    </section>
+}
+
+@if (cierres is null)
+{
+    <p class="vacio">Elige un almacen.</p>
+}
+else if (cierres.Count == 0)
+{
+    <p class="vacio">Ese almacen no se ha cerrado nunca.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Cerrado hasta</th>
+                <th>Concepto</th>
+                <th>Se hizo el</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var cierre in cierres)
+            {
+                <tr>
+                    <td class="clave">@cierre.Hasta.ToString("dd/MM/yyyy")</td>
+                    <td>@(cierre.Concepto ?? "—")</td>
+                    <td>@cierre.MomentoDeCierre.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td class="acciones">
+                        <button @onclick="() => Comprobar(cierre.Id)" disabled="@ocupado">
+                            Comprobar
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (comprobado is not null)
+{
+    @if (comprobado.Count == 0)
+    {
+        <p class="bien">
+            Vuelto a sumar: sigue diciendo lo mismo que el dia que se cerro.
+        </p>
+    }
+    else
+    {
+        <p class="aviso">
+            Ese cierre ya no cuadra con lo que dicen los movimientos. Alguien ha tocado el
+            pasado por debajo de la fecha de cierre.
+        </p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Articulo</th>
+                    <th class="numero">Declarado</th>
+                    <th class="numero">Ahora</th>
+                    <th class="numero">Valor declarado</th>
+                    <th class="numero">Valor ahora</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var descuadre in comprobado)
+                {
+                    <tr>
+                        <td class="clave">@Referencia(descuadre.ArticuloId)</td>
+                        <td class="numero">@Numero(descuadre.CantidadDeclarada)</td>
+                        <td class="numero negativo">@Numero(descuadre.CantidadAhora)</td>
+                        <td class="numero">@Dinero(descuadre.ValorDeclarado)</td>
+                        <td class="numero negativo">@Dinero(descuadre.ValorAhora)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private IReadOnlyList<AlmacenVisto> almacenes = [];
+    private IReadOnlyList<ArticuloVisto> articulos = [];
+    private IReadOnlyList<CierreVisto>? cierres;
+    private IReadOnlyList<DescuadreVisto>? comprobado;
+
+    private Guid almacenId;
+    private DateOnly hasta = DateOnly.FromDateTime(DateTime.Now).AddDays(-1);
+    private string concepto = "";
+
+    private string? aviso;
+    private bool ocupado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        almacenes = await trasiego.Almacenes();
+        articulos = await trasiego.Articulos(incluirBajas: true);
+    }
+
+    private async Task Cargar()
+    {
+        comprobado = null;
+        aviso = null;
+
+        cierres = almacenId == Guid.Empty ? null : await trasiego.Cierres(almacenId);
+    }
+
+    private async Task Cerrar()
+    {
+        ocupado = true;
+        aviso = null;
+
+        try
+        {
+            await trasiego.Cerrar(new CierrePedido(almacenId, hasta, Concepto()));
+
+            concepto = "";
+            await Cargar();
+        }
+        catch (FalloDeTrasiego fallo)
+        {
+            aviso = fallo.Message;
+        }
+        finally
+        {
+            ocupado = false;
+        }
+    }
+
+    private async Task Comprobar(Guid cierreId)
+    {
+        ocupado = true;
+
+        try
+        {
+            comprobado = await trasiego.Comprobar(cierreId);
+        }
+        catch (FalloDeTrasiego fallo)
+        {
+            aviso = fallo.Message;
+        }
+        finally
+        {
+            ocupado = false;
+        }
+    }
+
+    private string? Concepto() => string.IsNullOrWhiteSpace(concepto) ? null : concepto;
+
+    private string Referencia(Guid articuloId) => articulos
+        .FirstOrDefault(articulo => articulo.Id == articuloId)?.Referencia ?? "?";
+
+    private static string Numero(decimal valor) => valor.ToString("#,##0.####");
+
+    private static string Dinero(decimal valor) => valor.ToString("#,##0.00 €");
+}

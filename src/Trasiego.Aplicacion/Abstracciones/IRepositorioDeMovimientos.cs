@@ -3,6 +3,9 @@ using Trasiego.Dominio.Valores;
 
 namespace Trasiego.Aplicacion.Abstracciones;
 
+/// <summary>Una fila del recuento que sale de sumar movimientos hasta una fecha.</summary>
+public record SaldoCalculado(Guid ArticuloId, decimal Cantidad, decimal Valor);
+
 public interface IRepositorioDeMovimientos
 {
     void Agregar(Movimiento movimiento);
@@ -46,6 +49,15 @@ public interface IRepositorioDeMovimientos
         Guid almacenId,
         DateOnly? despuesDe = null,
         bool conSeguimiento = false,
+        CancellationToken cancelacion = default);
+
+    /// <summary>
+    /// Lo que dicen los movimientos que habia en un almacen a una fecha, articulo a articulo.
+    /// Como cada movimiento lleva su coste, esto ya es la valoracion de ese dia.
+    /// </summary>
+    Task<IReadOnlyList<SaldoCalculado>> SaldosA(
+        Guid almacenId,
+        DateOnly fecha,
         CancellationToken cancelacion = default);
 
     /// <summary>Los articulos de un almacen que tienen algun movimiento que llego tarde.</summary>

@@ -42,6 +42,34 @@ public class ClienteDeTrasiego(HttpClient http)
     public Task<MovimientoVisto> Salida(SalidaPedida peticion) =>
         Mandar<SalidaPedida, MovimientoVisto>("api/movimientos/salidas", peticion);
 
+    public Task<ValoracionVista> Valoracion(Guid almacenId, DateOnly fecha) =>
+        Traer<ValoracionVista>(
+            $"api/informes/valoracion?almacenId={almacenId}&fecha={fecha:yyyy-MM-dd}");
+
+    public Task<IReadOnlyList<CierreVisto>> Cierres(Guid almacenId) =>
+        Traer<IReadOnlyList<CierreVisto>>($"api/cierres?almacenId={almacenId}");
+
+    public Task<CierreVisto> Cerrar(CierrePedido peticion) =>
+        Mandar<CierrePedido, CierreVisto>("api/cierres", peticion);
+
+    public Task<IReadOnlyList<DescuadreVisto>> Comprobar(Guid cierreId) =>
+        Traer<IReadOnlyList<DescuadreVisto>>($"api/cierres/{cierreId}/comprobacion");
+
+    public Task<IReadOnlyList<Guid>> Sospechosos(Guid almacenId) =>
+        Traer<IReadOnlyList<Guid>>($"api/recalculo/sospechosos?almacenId={almacenId}");
+
+    public Task<ReproduccionVista> Comparar(Guid articuloId, Guid almacenId) =>
+        Traer<ReproduccionVista>(
+            $"api/recalculo/comparacion?articuloId={articuloId}&almacenId={almacenId}");
+
+    public async Task<ReproduccionVista> Aplicar(Guid articuloId, Guid almacenId)
+    {
+        var respuesta = await http.PostAsync(
+            $"api/recalculo?articuloId={articuloId}&almacenId={almacenId}", null);
+
+        return await Leer<ReproduccionVista>(respuesta);
+    }
+
     private async Task<T> Traer<T>(string ruta)
     {
         var respuesta = await http.GetAsync(ruta);

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Time.Testing;
 using Trasiego.Aplicacion.Cierres;
+using Trasiego.Aplicacion.Informes;
 using Trasiego.Aplicacion.Movimientos;
 using Trasiego.Aplicacion.Valoracion;
 using Trasiego.Dominio.Almacenes;
@@ -32,9 +33,15 @@ internal static class Escenario
     public static ServicioDeCierres Cierres(ContextoDeTrasiego contexto) =>
         new(new RepositorioDeAlmacenes(contexto),
             new RepositorioDeCierres(contexto),
+            new RepositorioDeMovimientos(contexto),
             new RepositorioDeValoracion(contexto),
             new UnidadDeTrabajo(contexto),
             Reloj());
+
+    public static ServicioDeInformes Informes(ContextoDeTrasiego contexto) =>
+        new(new RepositorioDeAlmacenes(contexto),
+            new RepositorioDeArticulos(contexto),
+            new RepositorioDeMovimientos(contexto));
 
     public static ServicioDeRecalculo Recalculo(ContextoDeTrasiego contexto) =>
         new(new RepositorioDeArticulos(contexto),

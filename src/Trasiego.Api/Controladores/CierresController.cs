@@ -9,6 +9,13 @@ namespace Trasiego.Api.Controladores;
 [Route("api/cierres")]
 public class CierresController(ServicioDeCierres cierres) : ControllerBase
 {
+    /// <summary>Los cierres de un almacen, del mas reciente al mas antiguo.</summary>
+    [HttpGet]
+    public async Task<IReadOnlyList<CierreVisto>> Listar(
+        [FromQuery] Guid almacenId,
+        CancellationToken cancelacion) =>
+        [.. (await cierres.DeAlmacen(almacenId, cancelacion)).Select(CierreVisto.De)];
+
     /// <summary>
     /// Cierra un almacen hasta un dia contable. A partir de ahi esa fecha no admite mas
     /// movimientos.
