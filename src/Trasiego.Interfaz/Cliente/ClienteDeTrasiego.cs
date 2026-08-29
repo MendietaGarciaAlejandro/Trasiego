@@ -130,6 +130,34 @@ public class ClienteDeTrasiego(HttpClient http)
     public Task<MovimientoVisto> Salida(SalidaPedida peticion) =>
         Mandar<SalidaPedida, MovimientoVisto>("api/movimientos/salidas", peticion);
 
+    public Task<IReadOnlyList<DocumentoVisto>> Documentos(Guid almacenId) =>
+        Traer<IReadOnlyList<DocumentoVisto>>($"api/documentos?almacenId={almacenId}");
+
+    public Task<DocumentoVisto> Documento(Guid id) =>
+        Traer<DocumentoVisto>($"api/documentos/{id}");
+
+    public Task<DocumentoVisto> AbrirDocumento(AbrirDocumento peticion) =>
+        Mandar<AbrirDocumento, DocumentoVisto>("api/documentos", peticion);
+
+    public Task<DocumentoVisto> AgregarLinea(Guid documentoId, LineaPedida peticion) =>
+        Mandar<LineaPedida, DocumentoVisto>($"api/documentos/{documentoId}/lineas", peticion);
+
+    public async Task<DocumentoVisto> QuitarLinea(Guid documentoId, Guid lineaId)
+    {
+        using var peticion = new HttpRequestMessage(
+            HttpMethod.Delete, $"api/documentos/{documentoId}/lineas/{lineaId}");
+
+        return await Leer<DocumentoVisto>(await Enviar(peticion));
+    }
+
+    public async Task<IReadOnlyList<MovimientoVisto>> RegistrarDocumento(Guid documentoId)
+    {
+        using var peticion = new HttpRequestMessage(
+            HttpMethod.Post, $"api/documentos/{documentoId}/registrar");
+
+        return await Leer<IReadOnlyList<MovimientoVisto>>(await Enviar(peticion));
+    }
+
     public Task<TraspasoVisto> Traspaso(TraspasoPedido peticion) =>
         Mandar<TraspasoPedido, TraspasoVisto>("api/movimientos/traspasos", peticion);
 

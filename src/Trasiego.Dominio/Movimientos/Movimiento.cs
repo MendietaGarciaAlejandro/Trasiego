@@ -14,7 +14,8 @@ public class Movimiento(
     string? concepto = null,
     MotivoDeMovimiento motivo = MotivoDeMovimiento.Ordinario,
     Guid? movimientoOrigenId = null,
-    bool retroactivo = false)
+    bool retroactivo = false,
+    Guid? documentoId = null)
 {
     public Guid Id { get; private set; } = Guid.CreateVersion7();
 
@@ -52,6 +53,10 @@ public class Movimiento(
     // se valora: lo ya valorado no se revisa. Lo que dice es que la valoracion de este
     // articulo no es la que saldria de recalcular desde cero, y eso hay que poder verlo.
     public bool Retroactivo { get; private set; } = retroactivo;
+
+    // El papel del que salio, si es que salio de uno. Los movimientos sueltos siguen
+    // valiendo: no todo lo que pasa en un almacen viene con un albaran detras.
+    public Guid? DocumentoId { get; private set; } = documentoId;
 
     public string? Concepto { get; private set; } =
         string.IsNullOrWhiteSpace(concepto) ? null : Comprobar.ComoMucho(concepto.Trim(), 200);

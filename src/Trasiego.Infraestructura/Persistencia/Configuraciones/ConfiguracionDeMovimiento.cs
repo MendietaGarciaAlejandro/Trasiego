@@ -50,5 +50,6 @@ public class ConfiguracionDeMovimiento : IEntityTypeConfiguration<Movimiento>
         // El saldo siempre se pregunta por articulo y almacen, y muchas veces acotado a una
         // fecha, asi que el indice va en ese orden.
         movimiento.HasIndex(m => new { m.ArticuloId, m.AlmacenId, m.FechaContable });
+        movimiento.HasIndex(m => m.DocumentoId);
     }
 }

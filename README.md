@@ -50,7 +50,7 @@ autenticación integrada: ahí no hay ningún secreto que guardar, porque no lle
 contraseña. La clave de firma sí, y por eso va en user-secrets; sin ella la Api se niega a
 arrancar y dice el comando.
 
-`dotnet test` ejecuta todo, unos 147 tests. Los de dominio no tocan la base de datos y son
+`dotnet test` ejecuta todo, unos 156 tests. Los de dominio no tocan la base de datos y son
 instantáneos; los de integración crean una base suya en LocalDB al empezar y la borran al
 terminar, y los de la Api levantan la aplicación entera con `WebApplicationFactory`.
 
@@ -68,7 +68,7 @@ Lo que no va a hacer, para que quede claro desde el principio:
 
 - Multiempresa
 - Contabilidad
-- Compras ni ventas: los movimientos entran directamente, sin documento detrás
+- Compras ni ventas: no hay proveedores, ni tarifas, ni impuestos, ni facturas
 - Lotes ni números de serie
 - Ubicaciones dentro del almacén
 
@@ -399,6 +399,27 @@ cero de cantidad **pero con valor** sí, porque eso es exactamente la diferencia
 descubierto tapado por encima o por debajo de lo que costó, y esconderla sería mentir sobre
 el total.
 
+### Un documento agrupa lo que llegó junto
+
+Un albarán de doce líneas eran doce movimientos sueltos con el número escrito a mano en un
+campo de texto. Ahora es un documento con su número, su fecha y sus líneas, y cada movimiento
+sabe de qué papel salió: el kardex enseña `ALB-2001` en vez de lo que alguien tecleara.
+
+Esto **no es una compra**. No hay proveedor, ni tarifas, ni impuestos, ni factura. Es el papel
+que viene con la mercancía, que es otra cosa.
+
+Un documento nace en borrador y no ha movido nada. Se le ponen líneas y, cuando está, se
+registra: entonces genera sus movimientos **todos de una vez**, porque la mercancía llegó
+junta y no tiene sentido que la sexta línea falle y las cinco primeras se queden dentro. Hay
+un test de eso: una entrega cuya segunda línea no tiene existencias no mueve la primera, y el
+documento se queda en borrador.
+
+Registrado ya no se toca. Lo que haya que corregir se corrige con otro movimiento, que es como
+se corrigen las cosas en un almacén.
+
+Y solo las recepciones llevan coste en la línea. En lo que sale, aceptarlo daría a entender
+que sirve para algo, y no: lo pone la valoración.
+
 ### Un traspaso no es una salida y una entrada sueltas
 
 Mover género de un almacén a otro podría hacerse con dos movimientos por separado, pero
@@ -493,6 +514,7 @@ el camino.
 15. **Traspasos entre almacenes.** El coste que sale de uno es el que entra en el otro.
 16. **Autenticación.** JWT con dos roles, y la sesión aguantando un recargado en la web y un
     cierre de la ventana en el escritorio.
+17. **Documentos.** Un albarán con sus líneas, que se registra entero o no se registra.
 
 De todo eso, las fases 3 a 9 son el proyecto de verdad: lo demás es lo que hace falta para
 poder verlo.
@@ -501,7 +523,5 @@ poder verlo.
 
 Lo que se me ocurre a partir de aquí, por orden de ganas:
 
-- **Documentos detrás de los movimientos.** Ahora un albarán es un concepto escrito a mano en
-  un campo de texto. Un albarán de verdad agrupa líneas, y eso cambia bastantes cosas.
 - **Lotes y caducidades.** Está fuera del alcance a propósito, pero es lo que pediría cualquiera
   que trabaje con alimentación o con farmacia, y encaja bien con las capas que ya hay.

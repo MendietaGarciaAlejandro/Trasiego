@@ -41,7 +41,8 @@ public class MovimientosController(ServicioDeMovimientos movimientos) : Controll
                 linea.Movimiento.Coste.Visible,
                 linea.Cantidad.Valor,
                 linea.Valor.Visible,
-                linea.Movimiento.Retroactivo))];
+                linea.Movimiento.Retroactivo,
+                linea.Documento))];
 
     /// <summary>Lo que hay y lo que vale ahora mismo.</summary>
     [HttpGet("existencias")]

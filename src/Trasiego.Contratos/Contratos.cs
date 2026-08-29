@@ -1,6 +1,7 @@
 using Trasiego.Dominio.Acceso;
 using Trasiego.Dominio.Almacenes;
 using Trasiego.Dominio.Catalogo;
+using Trasiego.Dominio.Documentos;
 using Trasiego.Dominio.Cierres;
 using Trasiego.Dominio.Movimientos;
 using Trasiego.Dominio.Valoracion;
@@ -67,6 +68,40 @@ public record AlmacenVisto(
 
 // ---- Movimientos --------------------------------------------------------------------
 
+// ---- Documentos ---------------------------------------------------------------------
+
+public record AbrirDocumento(
+    TipoDeDocumento Tipo,
+    string Numero,
+    Guid AlmacenId,
+    DateOnly FechaContable,
+    Guid? AlmacenDestinoId = null,
+    string? Concepto = null);
+
+public record LineaPedida(Guid ArticuloId, decimal Cantidad, decimal Coste = 0m);
+
+public record LineaVista(Guid Id, Guid ArticuloId, int Orden, decimal Cantidad, decimal Coste);
+
+public record DocumentoVisto(
+    Guid Id,
+    TipoDeDocumento Tipo,
+    string Numero,
+    Guid AlmacenId,
+    Guid? AlmacenDestinoId,
+    DateOnly FechaContable,
+    string? Concepto,
+    EstadoDeDocumento Estado,
+    IReadOnlyList<LineaVista> Lineas)
+{
+    public static DocumentoVisto De(Documento documento) => new(
+        documento.Id, documento.Tipo, documento.Numero,
+        documento.AlmacenId, documento.AlmacenDestinoId,
+        documento.FechaContable, documento.Concepto, documento.Estado,
+        [.. documento.Lineas.OrderBy(linea => linea.Orden).Select(linea => new LineaVista(
+            linea.Id, linea.ArticuloId, linea.Orden,
+            linea.Cantidad.Valor, linea.Coste.Visible))]);
+}
+
 public record EntradaPedida(
     Guid ArticuloId,
     Guid AlmacenId,
@@ -116,14 +151,15 @@ public record MovimientoVisto(
     DateOnly FechaContable,
     DateTimeOffset MomentoDeRegistro,
     string? Concepto,
-    bool Retroactivo)
+    bool Retroactivo,
+    Guid? DocumentoId)
 {
     public static MovimientoVisto De(Movimiento movimiento) => new(
         movimiento.Id, movimiento.ArticuloId, movimiento.AlmacenId,
         movimiento.Tipo, movimiento.Motivo,
         movimiento.Cantidad.Valor, movimiento.Coste.Visible,
         movimiento.FechaContable, movimiento.MomentoDeRegistro,
-        movimiento.Concepto, movimiento.Retroactivo);
+        movimiento.Concepto, movimiento.Retroactivo, movimiento.DocumentoId);
 }
 
 public record ExistenciasVistas(Guid ArticuloId, Guid AlmacenId, decimal Saldo, decimal Valor);
@@ -142,7 +178,8 @@ public record LineaDeKardex(
     decimal Coste,
     decimal SaldoCantidad,
     decimal SaldoValor,
-    bool Retroactivo);
+    bool Retroactivo,
+    string? Documento);
 
 // ---- Cierres y recalculo ------------------------------------------------------------
 

@@ -254,6 +254,8 @@ tfoot td {
 
 .clave { font-weight: 600; }
 
+tr.pinchable { cursor: pointer; }
+
 /* Las cifras a la derecha y con los digitos del mismo ancho: es lo que deja comparar una
    columna de numeros de un vistazo sin ir leyendola. */
 .numero {
@@ -267,6 +269,15 @@ tfoot td {
 .kardex td:nth-child(6), .kardex td:nth-child(7) { border-left: 1px solid #f0eeea; }
 
 .negativo { color: var(--malo); }
+
+.papel {
+    margin-left: 7px;
+    font-size: 11px;
+    color: var(--apagado);
+    background: #f0eeea;
+    border-radius: 3px;
+    padding: 1px 6px;
+}
 
 .marca {
     margin-left: 7px;

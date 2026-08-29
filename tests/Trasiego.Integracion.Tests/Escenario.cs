@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Time.Testing;
 using Trasiego.Aplicacion.Cierres;
+using Trasiego.Aplicacion.Documentos;
 using Trasiego.Aplicacion.Informes;
 using Trasiego.Aplicacion.Movimientos;
 using Trasiego.Aplicacion.Valoracion;
@@ -43,6 +44,11 @@ internal static class Escenario
             new RepositorioDeArticulos(contexto),
             new RepositorioDeMovimientos(contexto));
 
+    public static ServicioDeDocumentos Documentos(ContextoDeTrasiego contexto) =>
+        new(new RepositorioDeDocumentos(contexto),
+            new RepositorioDeArticulos(contexto),
+            new RepositorioDeAlmacenes(contexto));
+
     public static ServicioDeRecalculo Recalculo(ContextoDeTrasiego contexto) =>
         new(new RepositorioDeArticulos(contexto),
             new RepositorioDeMovimientos(contexto),
@@ -56,6 +62,7 @@ internal static class Escenario
             new RepositorioDeMovimientos(contexto),
             new RepositorioDeValoracion(contexto),
             new RepositorioDeCierres(contexto),
+            new RepositorioDeDocumentos(contexto),
             new UnidadDeTrabajo(contexto),
             Reloj());
 

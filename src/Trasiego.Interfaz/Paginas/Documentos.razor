@@ -1,0 +1,297 @@
+@page "/documentos"
+@inject ClienteDeTrasiego trasiego
+
+<h1>Documentos</h1>
+
+<section class="eleccion">
+    <label>
+        Almacen
+        <select @bind="almacenId" @bind:after="Cargar">
+            <option value="@Guid.Empty">— elige —</option>
+            @foreach (var almacen in almacenes)
+            {
+                <option value="@almacen.Id">@almacen.Codigo · @almacen.Nombre</option>
+            }
+        </select>
+    </label>
+</section>
+
+@if (almacenId != Guid.Empty)
+{
+    <section class="ficha">
+        <h2>Abrir uno nuevo</h2>
+
+        <div class="formulario">
+            <label>
+                Tipo
+                <select @bind="tipo">
+                    <option value="@TipoDeDocumento.Recepcion">Recepcion</option>
+                    <option value="@TipoDeDocumento.Entrega">Entrega</option>
+                    <option value="@TipoDeDocumento.Traspaso">Traspaso</option>
+                </select>
+            </label>
+            <label>
+                Numero
+                <input @bind="numero" placeholder="ALB-1042" />
+            </label>
+            <label>
+                Fecha contable
+                <input type="date" @bind="fecha" />
+            </label>
+            @if (tipo is TipoDeDocumento.Traspaso)
+            {
+                <label>
+                    Hacia
+                    <select @bind="destinoId">
+                        <option value="@Guid.Empty">— elige —</option>
+                        @foreach (var otro in almacenes.Where(otro => otro.Id != almacenId))
+                        {
+                            <option value="@otro.Id">@otro.Codigo · @otro.Nombre</option>
+                        }
+                    </select>
+                </label>
+            }
+            <label class="ancha">
+                Concepto
+                <input @bind="concepto" placeholder="material de obra" />
+            </label>
+
+            <button class="principal" @onclick="Abrir" disabled="@ocupado">Abrir</button>
+        </div>
+
+        <p class="pista">
+            Un documento en borrador no ha movido nada todavia. Se le van poniendo lineas y,
+            cuando esta, se registra: entonces genera sus movimientos, todos de una vez.
+        </p>
+    </section>
+}
+
+@if (aviso is not null)
+{
+    <p class="aviso">@aviso</p>
+}
+
+@if (abierto is not null)
+{
+    <section class="ficha">
+        <h2>@abierto.Numero · @abierto.Tipo</h2>
+
+        @if (abierto.Estado is EstadoDeDocumento.Borrador)
+        {
+            <div class="formulario">
+                <label>
+                    Articulo
+                    <select @bind="articuloId">
+                        <option value="@Guid.Empty">— elige —</option>
+                        @foreach (var articulo in articulos)
+                        {
+                            <option value="@articulo.Id">@articulo.Referencia · @articulo.Nombre</option>
+                        }
+                    </select>
+                </label>
+                <label>
+                    Cantidad
+                    <input type="number" step="0.0001" @bind="cantidad" />
+                </label>
+                @if (abierto.Tipo is TipoDeDocumento.Recepcion)
+                {
+                    <label>
+                        Coste de la linea
+                        <input type="number" step="0.01" @bind="coste" />
+                    </label>
+                }
+
+                <button @onclick="AgregarLinea"
+                        disabled="@(ocupado || articuloId == Guid.Empty)">
+                    Añadir linea
+                </button>
+                <button class="principal" @onclick="Registrar"
+                        disabled="@(ocupado || abierto.Lineas.Count == 0)">
+                    Registrar
+                </button>
+            </div>
+        }
+        else
+        {
+            <p class="bien">Registrado. Ya ha movido lo suyo y no se toca.</p>
+        }
+
+        @if (abierto.Lineas.Count == 0)
+        {
+            <p class="vacio">Sin lineas todavia.</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>Articulo</th>
+                        <th class="numero">Cantidad</th>
+                        @if (abierto.Tipo is TipoDeDocumento.Recepcion)
+                        {
+                            <th class="numero">Coste</th>
+                        }
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var linea in abierto.Lineas)
+                    {
+                        <tr>
+                            <td class="clave">@Referencia(linea.ArticuloId)</td>
+                            <td class="numero">@Numero(linea.Cantidad)</td>
+                            @if (abierto.Tipo is TipoDeDocumento.Recepcion)
+                            {
+                                <td class="numero">@Dinero(linea.Coste)</td>
+                            }
+                            <td class="acciones">
+                                @if (abierto.Estado is EstadoDeDocumento.Borrador)
+                                {
+                                    <button @onclick="() => QuitarLinea(linea.Id)"
+                                            disabled="@ocupado">Quitar</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </section>
+}
+
+@if (documentos is null)
+{
+    <p class="vacio">Elige un almacen.</p>
+}
+else if (documentos.Count == 0)
+{
+    <p class="vacio">Por ahi no ha pasado ningun papel todavia.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Numero</th>
+                <th>Tipo</th>
+                <th>Fecha</th>
+                <th>Concepto</th>
+                <th class="numero">Lineas</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var documento in documentos)
+            {
+                <tr class="pinchable" @onclick="() => Abrirlo(documento)">
+                    <td class="clave">@documento.Numero</td>
+                    <td>@documento.Tipo</td>
+                    <td>@documento.FechaContable.ToString("dd/MM/yyyy")</td>
+                    <td>@(documento.Concepto ?? "—")</td>
+                    <td class="numero">@documento.Lineas.Count</td>
+                    <td>
+                        @if (documento.Estado is EstadoDeDocumento.Borrador)
+                        {
+                            <span class="marca">borrador</span>
+                        }
+                        else
+                        {
+                            <text>Registrado</text>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<AlmacenVisto> almacenes = [];
+    private IReadOnlyList<ArticuloVisto> articulos = [];
+    private IReadOnlyList<DocumentoVisto>? documentos;
+    private DocumentoVisto? abierto;
+
+    private Guid almacenId;
+    private Guid destinoId;
+    private TipoDeDocumento tipo = TipoDeDocumento.Recepcion;
+    private string numero = "";
+    private DateOnly fecha = DateOnly.FromDateTime(DateTime.Now);
+    private string concepto = "";
+
+    private Guid articuloId;
+    private decimal cantidad = 1;
+    private decimal coste;
+
+    private string? aviso;
+    private bool ocupado;
+
+    protected override async Task OnInitializedAsync()
+    {
+        almacenes = await trasiego.Almacenes();
+        articulos = await trasiego.Articulos();
+    }
+
+    private async Task Cargar()
+    {
+        abierto = null;
+        aviso = null;
+
+        documentos = almacenId == Guid.Empty ? null : await trasiego.Documentos(almacenId);
+    }
+
+    private void Abrirlo(DocumentoVisto documento)
+    {
+        abierto = documento;
+        aviso = null;
+    }
+
+    private Task Abrir() => Intentar(async () =>
+    {
+        abierto = await trasiego.AbrirDocumento(new AbrirDocumento(
+            tipo, numero, almacenId, fecha,
+            tipo is TipoDeDocumento.Traspaso ? destinoId : null,
+            string.IsNullOrWhiteSpace(concepto) ? null : concepto));
+
+        numero = concepto = "";
+    });
+
+    private Task AgregarLinea() => Intentar(async () =>
+        abierto = await trasiego.AgregarLinea(
+            abierto!.Id, new LineaPedida(articuloId, cantidad, coste)));
+
+    private Task QuitarLinea(Guid lineaId) => Intentar(async () =>
+        abierto = await trasiego.QuitarLinea(abierto!.Id, lineaId));
+
+    private Task Registrar() => Intentar(async () =>
+    {
+        await trasiego.RegistrarDocumento(abierto!.Id);
+        abierto = await trasiego.Documento(abierto.Id);
+    });
+
+    private async Task Intentar(Func<Task> que)
+    {
+        ocupado = true;
+        aviso = null;
+
+        try
+        {
+            await que();
+            documentos = await trasiego.Documentos(almacenId);
+        }
+        catch (FalloDeTrasiego fallo)
+        {
+            aviso = fallo.Message;
+        }
+        finally
+        {
+            ocupado = false;
+        }
+    }
+
+    private string Referencia(Guid id) => articulos
+        .FirstOrDefault(articulo => articulo.Id == id)?.Referencia ?? "?";
+
+    private static string Numero(decimal valor) => valor.ToString("#,##0.####");
+
+    private static string Dinero(decimal valor) => valor.ToString("#,##0.00 €");
+}

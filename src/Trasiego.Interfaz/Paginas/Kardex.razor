@@ -130,6 +130,10 @@ else
                     <td>@linea.FechaContable.ToString("dd/MM/yyyy")</td>
                     <td>
                         @Titulo(linea)
+                        @if (linea.Documento is not null)
+                        {
+                            <span class="papel">@linea.Documento</span>
+                        }
                         @if (linea.Retroactivo)
                         {
                             <span class="marca" title="Llego con fecha anterior a lo que ya habia">tarde</span>

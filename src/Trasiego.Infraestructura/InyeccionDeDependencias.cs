@@ -24,6 +24,7 @@ public static class InyeccionDeDependencias
         servicios.AddScoped<IRepositorioDeArticulos, RepositorioDeArticulos>();
         servicios.AddScoped<IRepositorioDeAlmacenes, RepositorioDeAlmacenes>();
         servicios.AddScoped<IRepositorioDeMovimientos, RepositorioDeMovimientos>();
+        servicios.AddScoped<IRepositorioDeDocumentos, RepositorioDeDocumentos>();
         servicios.AddScoped<IRepositorioDeValoracion, RepositorioDeValoracion>();
         servicios.AddScoped<IRepositorioDeCierres, RepositorioDeCierres>();
         servicios.AddScoped<IRepositorioDeUsuarios, RepositorioDeUsuarios>();

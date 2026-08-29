@@ -2,6 +2,7 @@ using Trasiego.Aplicacion.Abstracciones;
 using Trasiego.Dominio.Almacenes;
 using Trasiego.Dominio.Catalogo;
 using Trasiego.Dominio.Comun;
+using Trasiego.Dominio.Documentos;
 using Trasiego.Dominio.Movimientos;
 using Trasiego.Dominio.Valoracion;
 using Trasiego.Dominio.Valores;
@@ -13,7 +14,11 @@ namespace Trasiego.Aplicacion.Movimientos;
 /// guarda en ningun sitio: se saca recorriendo los movimientos en el orden en que cuentan,
 /// que es la invariante leida de arriba abajo en vez de de golpe.
 /// </summary>
-public record LineaDeHistorico(Movimiento Movimiento, Saldo Cantidad, Importe Valor);
+public record LineaDeHistorico(
+    Movimiento Movimiento,
+    Saldo Cantidad,
+    Importe Valor,
+    string? Documento);
 
 /// <summary>Las dos mitades de un traspaso.</summary>
 public record Traspaso(Movimiento Salida, Movimiento Entrada);
@@ -24,6 +29,7 @@ public class ServicioDeMovimientos(
     IRepositorioDeMovimientos movimientos,
     IRepositorioDeValoracion valoracion,
     IRepositorioDeCierres cierres,
+    IRepositorioDeDocumentos documentos,
     IUnidadDeTrabajo unidadDeTrabajo,
     TimeProvider reloj)
 {
@@ -208,6 +214,25 @@ public class ServicioDeMovimientos(
         string? concepto,
         CancellationToken cancelacion)
     {
+        var traspaso = await MoverUna(
+            articuloId, origenId, destinoId, cantidad, fechaContable, concepto, null, cancelacion);
+
+        // Un unico guardado para las dos mitades: si algo falla, no queda mercancia que ha
+        // salido de un almacen y no ha llegado a ninguno.
+        await unidadDeTrabajo.GuardarCambios(cancelacion);
+        return traspaso;
+    }
+
+    private async Task<Traspaso> MoverUna(
+        Guid articuloId,
+        Guid origenId,
+        Guid destinoId,
+        Cantidad cantidad,
+        DateOnly fechaContable,
+        string? concepto,
+        Guid? documentoId,
+        CancellationToken cancelacion)
+    {
         if (origenId == destinoId)
             throw new ReglaDeNegocio("El origen y el destino son el mismo almacen.");
 
@@ -219,23 +244,92 @@ public class ServicioDeMovimientos(
 
         var salida = await Sacar(
             articulo, origen, cantidad, fechaContable, concepto,
-            MotivoDeMovimiento.Traspaso, saleTarde, cancelacion);
+            MotivoDeMovimiento.Traspaso, saleTarde, cancelacion, documentoId);
 
         var entrada = new Movimiento(
             articulo.Id, destino.Id, TipoDeMovimiento.Entrada, cantidad, salida.Coste,
             fechaContable, reloj.GetUtcNow(), concepto,
-            MotivoDeMovimiento.Traspaso, salida.Id, entraTarde);
+            MotivoDeMovimiento.Traspaso, salida.Id, entraTarde, documentoId);
 
         movimientos.Agregar(entrada);
 
         await MeterEnAlmacen(
             articulo, destino, entrada, cantidad, salida.Coste, fechaContable, cancelacion);
 
-        // Un unico guardado para las dos mitades: si algo falla, no queda mercancia que ha
-        // salido de un almacen y no ha llegado a ninguno.
-        await unidadDeTrabajo.GuardarCambios(cancelacion);
-
         return new Traspaso(salida, entrada);
+    }
+
+    /// <summary>
+    /// Convierte un documento en borrador en los movimientos que le corresponden.
+    /// </summary>
+    /// <remarks>
+    /// Todo en un solo guardado. Un albaran de doce lineas o entra entero o no entra: no
+    /// tiene sentido que la sexta falle y las cinco primeras se queden dentro, porque la
+    /// mercancia llego junta.
+    /// </remarks>
+    public Task<IReadOnlyList<Movimiento>> RegistrarDocumento(
+        Guid documentoId,
+        CancellationToken cancelacion = default) =>
+        unidadDeTrabajo.ConReintentos(cancela => Asentar(documentoId, cancela), cancelacion);
+
+    private async Task<IReadOnlyList<Movimiento>> Asentar(
+        Guid documentoId,
+        CancellationToken cancelacion)
+    {
+        // Se relee en cada intento: si hubo que reintentar por un choque, lo que quedara
+        // cargado ya no vale y el documento estaria marcado como registrado en memoria.
+        var documento = await documentos.PorId(documentoId, cancelacion)
+            ?? throw new NoEncontrado("No existe ese documento.");
+
+        documento.DarPorRegistrado(reloj.GetUtcNow());
+
+        var hechos = new List<Movimiento>();
+
+        // En el orden del papel, que es el orden en que se valoran.
+        foreach (var linea in documento.Lineas.OrderBy(linea => linea.Orden))
+            hechos.AddRange(await Asentar(documento, linea, cancelacion));
+
+        await unidadDeTrabajo.GuardarCambios(cancelacion);
+        return hechos;
+    }
+
+    private async Task<IReadOnlyList<Movimiento>> Asentar(
+        Documento documento,
+        LineaDeDocumento linea,
+        CancellationToken cancelacion)
+    {
+        if (documento.Tipo is TipoDeDocumento.Traspaso)
+        {
+            var traspaso = await MoverUna(
+                linea.ArticuloId, documento.AlmacenId, documento.AlmacenDestinoId!.Value,
+                linea.Cantidad, documento.FechaContable, documento.Concepto, documento.Id,
+                cancelacion);
+
+            return [traspaso.Salida, traspaso.Entrada];
+        }
+
+        var (articulo, almacen, retroactivo) = await Comprobaciones(
+            linea.ArticuloId, documento.AlmacenId, linea.Cantidad, documento.FechaContable,
+            cancelacion);
+
+        if (documento.Tipo is TipoDeDocumento.Entrega)
+            return
+            [
+                await Sacar(
+                    articulo, almacen, linea.Cantidad, documento.FechaContable,
+                    documento.Concepto, MotivoDeMovimiento.Ordinario, retroactivo, cancelacion,
+                    documento.Id),
+            ];
+
+        var entrada = Meter(
+            articulo, almacen, linea.Cantidad, linea.Coste, documento.FechaContable,
+            documento.Concepto, MotivoDeMovimiento.Ordinario, retroactivo, documento.Id);
+
+        await MeterEnAlmacen(
+            articulo, almacen, entrada, linea.Cantidad, linea.Coste, documento.FechaContable,
+            cancelacion);
+
+        return [entrada];
     }
 
     /// <summary>
@@ -298,18 +392,30 @@ public class ServicioDeMovimientos(
         Guid almacenId,
         CancellationToken cancelacion = default)
     {
+        var historico = await Historico(articuloId, almacenId, cancelacion);
+
+        // Los numeros de los papeles de los que salieron, para poder enseñarlos: un albaran
+        // se lee mejor que un identificador.
+        var papeles = await documentos.NumerosDe(
+            historico.Where(m => m.DocumentoId is not null).Select(m => m.DocumentoId!.Value),
+            cancelacion);
+
         var cantidad = 0m;
         var valor = Importe.Cero;
         var lineas = new List<LineaDeHistorico>();
 
-        foreach (var movimiento in await Historico(articuloId, almacenId, cancelacion))
+        foreach (var movimiento in historico)
         {
             var entra = movimiento.Tipo is TipoDeMovimiento.Entrada;
 
             cantidad += entra ? movimiento.Cantidad.Valor : -movimiento.Cantidad.Valor;
             valor = entra ? valor + movimiento.Coste : valor - movimiento.Coste;
 
-            lineas.Add(new LineaDeHistorico(movimiento, Saldo.De(cantidad), valor));
+            var papel = movimiento.DocumentoId is { } id && papeles.TryGetValue(id, out var numero)
+                ? numero
+                : null;
+
+            lineas.Add(new LineaDeHistorico(movimiento, Saldo.De(cantidad), valor, papel));
         }
 
         return lineas;
@@ -331,11 +437,12 @@ public class ServicioDeMovimientos(
         DateOnly fechaContable,
         string? concepto,
         MotivoDeMovimiento motivo,
-        bool retroactivo)
+        bool retroactivo,
+        Guid? documentoId = null)
     {
         var entrada = new Movimiento(
             articulo.Id, almacen.Id, TipoDeMovimiento.Entrada, cantidad, coste,
-            fechaContable, reloj.GetUtcNow(), concepto, motivo, null, retroactivo);
+            fechaContable, reloj.GetUtcNow(), concepto, motivo, null, retroactivo, documentoId);
 
         movimientos.Agregar(entrada);
         return entrada;
@@ -418,7 +525,8 @@ public class ServicioDeMovimientos(
         string? concepto,
         MotivoDeMovimiento motivo,
         bool retroactivo,
-        CancellationToken cancelacion)
+        CancellationToken cancelacion,
+        Guid? documentoId = null)
     {
         var capas = await valoracion.CapasConExistencias(articulo.Id, almacen.Id, cancelacion);
         var disponible = capas.Aggregate(Cantidad.Cero, (suma, capa) => suma + capa.CantidadRestante);
@@ -439,7 +547,7 @@ public class ServicioDeMovimientos(
 
         var salida = new Movimiento(
             articulo.Id, almacen.Id, TipoDeMovimiento.Salida, cantidad, coste + costeEnDescubierto,
-            fechaContable, reloj.GetUtcNow(), concepto, motivo, null, retroactivo);
+            fechaContable, reloj.GetUtcNow(), concepto, motivo, null, retroactivo, documentoId);
 
         movimientos.Agregar(salida);
 
