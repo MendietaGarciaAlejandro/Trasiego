@@ -60,6 +60,14 @@ public interface IRepositorioDeMovimientos
         DateOnly fecha,
         CancellationToken cancelacion = default);
 
+    /// <summary>
+    /// Las entradas de traspaso que se alimentaron de esas salidas. Sirve para saber si
+    /// cambiar el coste de una salida dejaria descuadrado otro almacen.
+    /// </summary>
+    Task<IReadOnlyList<Movimiento>> TraspasosAlimentadosPor(
+        IEnumerable<Guid> salidaIds,
+        CancellationToken cancelacion = default);
+
     /// <summary>Los articulos de un almacen que tienen algun movimiento que llego tarde.</summary>
     Task<IReadOnlyList<Guid>> ArticulosConRetroactivos(
         Guid almacenId,

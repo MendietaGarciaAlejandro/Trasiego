@@ -47,6 +47,19 @@ public class ServicioDeRecalculo(
         Guid almacenId,
         CancellationToken cancelacion = default)
     {
+        // Se reproduce primero sin tocar nada, porque hay un caso en el que no se puede
+        // seguir y conviene saberlo antes de haber deshecho nada.
+        var previa = await Comparar(articuloId, almacenId, cancelacion);
+
+        var atados = await movimientos.TraspasosAlimentadosPor(
+            previa.Descuadradas.Select(salida => salida.MovimientoId), cancelacion);
+
+        if (atados.Count > 0)
+            throw new Conflicto(
+                "Alguna de las salidas que habria que corregir alimento un traspaso a otro " +
+                "almacen, y cambiarle el coste dejaria ese otro almacen diciendo una cosa " +
+                "distinta. Propagar el recalculo de un almacen a otro todavia no esta hecho.");
+
         var (articulo, cierre) = await Contexto(articuloId, almacenId, cancelacion);
         var fotos = await Fotos(cierre, articuloId, cancelacion);
         var desde = cierre?.Hasta ?? DateOnly.MinValue;

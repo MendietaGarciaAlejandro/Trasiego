@@ -42,6 +42,9 @@ public class ClienteDeTrasiego(HttpClient http)
     public Task<MovimientoVisto> Salida(SalidaPedida peticion) =>
         Mandar<SalidaPedida, MovimientoVisto>("api/movimientos/salidas", peticion);
 
+    public Task<TraspasoVisto> Traspaso(TraspasoPedido peticion) =>
+        Mandar<TraspasoPedido, TraspasoVisto>("api/movimientos/traspasos", peticion);
+
     public Task<ValoracionVista> Valoracion(Guid almacenId, DateOnly fecha) =>
         Traer<ValoracionVista>(
             $"api/informes/valoracion?almacenId={almacenId}&fecha={fecha:yyyy-MM-dd}");

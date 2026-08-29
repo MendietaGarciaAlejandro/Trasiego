@@ -13,4 +13,10 @@ public enum MotivoDeMovimiento
 
     /// <summary>Vuelve material que ya habia salido, al coste al que salio.</summary>
     Devolucion = 3,
+
+    /// <summary>
+    /// Mercancia que cambia de almacen. Son dos movimientos, la salida de uno y la entrada
+    /// en el otro, y la entrada apunta a la salida para que se sepa que van juntos.
+    /// </summary>
+    Traspaso = 4,
 }

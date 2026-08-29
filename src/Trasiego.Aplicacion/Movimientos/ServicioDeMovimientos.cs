@@ -15,6 +15,9 @@ namespace Trasiego.Aplicacion.Movimientos;
 /// </summary>
 public record LineaDeHistorico(Movimiento Movimiento, Saldo Cantidad, Importe Valor);
 
+/// <summary>Las dos mitades de un traspaso.</summary>
+public record Traspaso(Movimiento Salida, Movimiento Entrada);
+
 public class ServicioDeMovimientos(
     IRepositorioDeArticulos articulos,
     IRepositorioDeAlmacenes almacenes,
@@ -173,6 +176,66 @@ public class ServicioDeMovimientos(
 
         await unidadDeTrabajo.GuardarCambios(cancelacion);
         return devolucion;
+    }
+
+    /// <summary>
+    /// Mueve mercancia de un almacen a otro.
+    /// </summary>
+    /// <remarks>
+    /// No es una salida y una entrada sueltas. El coste no lo teclea nadie: es el que sale
+    /// del almacen de origen, y ese mismo entra en el de destino. Mover genero de sitio no
+    /// puede cambiar lo que vale, y si el coste se tecleara aparte podria.
+    /// </remarks>
+    public Task<Traspaso> Traspasar(
+        Guid articuloId,
+        Guid origenId,
+        Guid destinoId,
+        Cantidad cantidad,
+        DateOnly fechaContable,
+        string? concepto = null,
+        CancellationToken cancelacion = default) =>
+        unidadDeTrabajo.ConReintentos(
+            cancela => Mover(
+                articuloId, origenId, destinoId, cantidad, fechaContable, concepto, cancela),
+            cancelacion);
+
+    private async Task<Traspaso> Mover(
+        Guid articuloId,
+        Guid origenId,
+        Guid destinoId,
+        Cantidad cantidad,
+        DateOnly fechaContable,
+        string? concepto,
+        CancellationToken cancelacion)
+    {
+        if (origenId == destinoId)
+            throw new ReglaDeNegocio("El origen y el destino son el mismo almacen.");
+
+        var (articulo, origen, saleTarde) = await Comprobaciones(
+            articuloId, origenId, cantidad, fechaContable, cancelacion);
+
+        var (_, destino, entraTarde) = await Comprobaciones(
+            articuloId, destinoId, cantidad, fechaContable, cancelacion);
+
+        var salida = await Sacar(
+            articulo, origen, cantidad, fechaContable, concepto,
+            MotivoDeMovimiento.Traspaso, saleTarde, cancelacion);
+
+        var entrada = new Movimiento(
+            articulo.Id, destino.Id, TipoDeMovimiento.Entrada, cantidad, salida.Coste,
+            fechaContable, reloj.GetUtcNow(), concepto,
+            MotivoDeMovimiento.Traspaso, salida.Id, entraTarde);
+
+        movimientos.Agregar(entrada);
+
+        await MeterEnAlmacen(
+            articulo, destino, entrada, cantidad, salida.Coste, fechaContable, cancelacion);
+
+        // Un unico guardado para las dos mitades: si algo falla, no queda mercancia que ha
+        // salido de un almacen y no ha llegado a ninguno.
+        await unidadDeTrabajo.GuardarCambios(cancelacion);
+
+        return new Traspaso(salida, entrada);
     }
 
     /// <summary>

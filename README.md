@@ -46,7 +46,7 @@ Para el escritorio, con la Api levantada:
 dotnet run --project src/Trasiego.Escritorio
 ```
 
-`dotnet test` ejecuta todo (unos 122 tests). Los de la API levantan la aplicación entera con `WebApplicationFactory` contra la misma base de datos de pruebas. Los tests de dominio no tocan la base de datos y son
+`dotnet test` ejecuta todo (unos 129 tests). Los de la API levantan la aplicación entera con `WebApplicationFactory` contra la misma base de datos de pruebas. Los tests de dominio no tocan la base de datos y son
 instantáneos; los de integración crean una base de datos suya en LocalDB al empezar y la
 borran al terminar.
 
@@ -378,6 +378,22 @@ Un artículo que quedó a cero de cantidad y de valor no sale en el informe. Uno
 cero de cantidad **pero con valor** sí, porque eso es exactamente la diferencia que deja un
 descubierto tapado por encima o por debajo de lo que costó, y esconderla sería mentir sobre
 el total.
+
+### Un traspaso no es una salida y una entrada sueltas
+
+Mover género de un almacén a otro podría hacerse con dos movimientos por separado, pero
+entonces el coste de la entrada lo teclearía alguien, y **mover algo de sitio no puede cambiar
+lo que vale**. Así que el coste no se pide: es el que sale del almacén de origen, y ese mismo
+entra en el de destino.
+
+Las dos mitades se guardan atadas — la entrada apunta a la salida — y se confirman de una vez,
+para que no pueda quedar mercancía que ha salido de un almacén y no ha llegado a ninguno.
+
+Eso trajo un problema que no esperaba. Recalcular un almacén puede cambiar el coste de una
+salida; si esa salida alimentó un traspaso, el otro almacén se quedaría diciendo una cosa
+distinta. Propagar el recálculo de un almacén a otro es un problema mayor del que quería meter
+aquí, así que **`Aplicar` se planta y lo dice** en vez de corromper el destino en silencio.
+`Comparar` sigue funcionando, porque solo mira.
 
 ### El saldo lleva signo y la cantidad no
 

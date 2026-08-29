@@ -73,6 +73,16 @@ public record DevolucionPedida(
     DateOnly FechaContable,
     string? Concepto = null);
 
+public record TraspasoPedido(
+    Guid ArticuloId,
+    Guid OrigenId,
+    Guid DestinoId,
+    decimal Cantidad,
+    DateOnly FechaContable,
+    string? Concepto = null);
+
+public record TraspasoVisto(MovimientoVisto Salida, MovimientoVisto Entrada);
+
 public record RecuentoPedido(
     Guid ArticuloId,
     Guid AlmacenId,

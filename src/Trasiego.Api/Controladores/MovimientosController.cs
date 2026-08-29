@@ -83,6 +83,24 @@ public class MovimientosController(ServicioDeMovimientos movimientos) : Controll
             peticion.FechaContable, peticion.Concepto, cancelacion));
 
     /// <summary>
+    /// Mueve mercancia de un almacen a otro. El coste no se manda: es el que sale del
+    /// origen, y ese mismo entra en el destino.
+    /// </summary>
+    [HttpPost("traspasos")]
+    public async Task<TraspasoVisto> Traspaso(
+        TraspasoPedido peticion,
+        CancellationToken cancelacion)
+    {
+        var traspaso = await movimientos.Traspasar(
+            peticion.ArticuloId, peticion.OrigenId, peticion.DestinoId,
+            Cantidad.De(peticion.Cantidad), peticion.FechaContable, peticion.Concepto,
+            cancelacion);
+
+        return new TraspasoVisto(
+            MovimientoVisto.De(traspaso.Salida), MovimientoVisto.De(traspaso.Entrada));
+    }
+
+    /// <summary>
     /// Cuadra el sistema con un recuento. Devuelve 204 si ya cuadraba y no hizo falta mover
     /// nada.
     /// </summary>

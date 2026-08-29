@@ -105,6 +105,17 @@ public class RepositorioDeMovimientos(ContextoDeTrasiego contexto) : IRepositori
                 """)
             .ToListAsync(cancelacion);
 
+    public async Task<IReadOnlyList<Movimiento>> TraspasosAlimentadosPor(
+        IEnumerable<Guid> salidaIds,
+        CancellationToken cancelacion = default) =>
+        await contexto.Movimientos
+            .AsNoTracking()
+            .Where(m => m.Motivo == MotivoDeMovimiento.Traspaso
+                     && m.Tipo == TipoDeMovimiento.Entrada
+                     && m.MovimientoOrigenId != null
+                     && salidaIds.Contains(m.MovimientoOrigenId.Value))
+            .ToListAsync(cancelacion);
+
     public async Task<IReadOnlyList<Guid>> ArticulosConRetroactivos(
         Guid almacenId,
         CancellationToken cancelacion = default) =>

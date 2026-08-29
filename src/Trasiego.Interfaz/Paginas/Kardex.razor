@@ -72,9 +72,26 @@
             <button @onclick="Salida" disabled="@ocupado">Salida</button>
         </div>
 
+        <div class="formulario">
+            <label>
+                Traspasar a
+                <select @bind="destinoId">
+                    <option value="@Guid.Empty">— elige —</option>
+                    @foreach (var otro in almacenes.Where(otro => otro.Id != almacenId))
+                    {
+                        <option value="@otro.Id">@otro.Codigo · @otro.Nombre</option>
+                    }
+                </select>
+            </label>
+            <button @onclick="Traspasar" disabled="@(ocupado || destinoId == Guid.Empty)">
+                Traspasar
+            </button>
+        </div>
+
         <p class="pista">
             El coste es el de la entrada entera, no el de cada unidad. Las salidas no lo
-            llevan: sale de las capas.
+            llevan: sale de las capas. Y un traspaso tampoco: lo que vale al salir de aqui es
+            lo que vale al llegar alli, con la cantidad y la fecha de arriba.
         </p>
 
         @if (aviso is not null)
@@ -145,6 +162,7 @@ else
 
     private Guid articuloId;
     private Guid almacenId;
+    private Guid destinoId;
 
     private DateOnly fecha = DateOnly.FromDateTime(DateTime.Now);
     private decimal cantidad = 1;
@@ -167,6 +185,10 @@ else
 
     private async Task Cargar()
     {
+        // El destino se olvida al cambiar de almacen: si no, quedaria elegido uno que puede
+        // ser el propio almacen que se esta mirando.
+        destinoId = Guid.Empty;
+
         if (!Elegido)
         {
             lineas = null;
@@ -183,6 +205,9 @@ else
 
     private Task Salida() => Registrar(() => trasiego.Salida(
         new SalidaPedida(articuloId, almacenId, cantidad, fecha, Concepto())));
+
+    private Task Traspasar() => Registrar(() => trasiego.Traspaso(
+        new TraspasoPedido(articuloId, almacenId, destinoId, cantidad, fecha, Concepto())));
 
     private async Task Registrar(Func<Task> movimiento)
     {
@@ -211,6 +236,7 @@ else
     {
         MotivoDeMovimiento.Regularizacion => "Regularizacion por recuento",
         MotivoDeMovimiento.Devolucion => "Devolucion",
+        MotivoDeMovimiento.Traspaso => "Traspaso",
         _ => linea.Tipo is TipoDeMovimiento.Entrada ? "Entrada" : "Salida",
     };
 
