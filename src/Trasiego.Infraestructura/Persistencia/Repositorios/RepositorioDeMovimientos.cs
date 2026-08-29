@@ -7,11 +7,7 @@ namespace Trasiego.Infraestructura.Persistencia.Repositorios;
 
 public class RepositorioDeMovimientos(ContextoDeTrasiego contexto) : IRepositorioDeMovimientos
 {
-    public async Task Alta(Movimiento movimiento, CancellationToken cancelacion = default)
-    {
-        contexto.Movimientos.Add(movimiento);
-        await contexto.SaveChangesAsync(cancelacion);
-    }
+    public void Agregar(Movimiento movimiento) => contexto.Movimientos.Add(movimiento);
 
     public async Task<Cantidad> Saldo(
         Guid articuloId,
@@ -34,6 +30,22 @@ public class RepositorioDeMovimientos(ContextoDeTrasiego contexto) : IRepositori
             .SingleAsync(cancelacion);
 
         return Cantidad.De(suma ?? 0m);
+    }
+
+    public async Task<Importe> CosteNeto(
+        Guid articuloId,
+        Guid almacenId,
+        CancellationToken cancelacion = default)
+    {
+        var suma = await contexto.Database
+            .SqlQuery<decimal?>($"""
+                SELECT SUM(CASE WHEN Tipo = 1 THEN Coste ELSE -Coste END) AS Value
+                FROM Movimientos
+                WHERE ArticuloId = {articuloId} AND AlmacenId = {almacenId}
+                """)
+            .SingleAsync(cancelacion);
+
+        return Importe.De(suma ?? 0m);
     }
 
     public async Task<IReadOnlyList<Movimiento>> Listar(

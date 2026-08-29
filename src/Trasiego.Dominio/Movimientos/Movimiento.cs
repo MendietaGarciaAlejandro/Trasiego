@@ -8,6 +8,7 @@ public class Movimiento(
     Guid almacenId,
     TipoDeMovimiento tipo,
     Cantidad cantidad,
+    Importe coste,
     DateOnly fechaContable,
     DateTimeOffset momentoDeRegistro,
     string? concepto = null)
@@ -22,6 +23,12 @@ public class Movimiento(
     public Cantidad Cantidad { get; private set; } = cantidad.EsCero
         ? throw new ReglaDeNegocio("Un movimiento de cantidad cero no mueve nada.")
         : cantidad;
+
+    // Lo que costo, si es una entrada, o lo que valia lo que salio, si es una salida. En las
+    // salidas no lo teclea nadie: sale de las capas que se vacian.
+    public Importe Coste { get; private set; } = coste < Importe.Cero
+        ? throw new ReglaDeNegocio("El coste de un movimiento no puede ser negativo.")
+        : coste;
 
     // El dia al que pertenece el movimiento. Es lo que manda en los informes y en el saldo
     // a fecha, y no tiene por que ser hoy: un albaran de la semana pasada se registra hoy

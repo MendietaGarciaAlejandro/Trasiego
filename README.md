@@ -19,6 +19,7 @@ Todo lo demás del proyecto está para que esa frase siga siendo verdad.
 - .NET 10, capas separadas (Dominio, Aplicación, Infraestructura, Api)
 - SQL Server 2022 y EF Core 10
 - xUnit; los tests de integración corren sobre LocalDB
+- Scalar para probar la API a mano (`/scalar` en desarrollo)
 - Más adelante, Blazor: primero escritorio con BlazorWebView, luego web con los mismos componentes
 
 ## Cómo levantarlo
@@ -125,6 +126,27 @@ convertir el valor de ida y vuelta pero no sabe sumar el tipo del dominio: para 
 tendría que traerse todos los movimientos y sumarlos en memoria, que es justo lo que no puede
 hacer un saldo de almacén.
 
+### Cada entrada abre una capa, y la salida vacía capas por antigüedad
+
+FIFO no se calcula, se guarda. Cada entrada abre una capa con su cantidad y su coste, y una
+salida va vaciando capas hasta cubrir lo que se pide. El coste de una salida no lo teclea
+nadie: es la suma de lo que ha ido saliendo de cada capa.
+
+El orden lo pone la **fecha contable**, no la de registro. Un albarán traspapelado que se
+teclea hoy con fecha de la semana pasada es más antiguo que otro tecleado ayer con fecha de
+ayer, y en FIFO sale antes. Es la primera vez que la separación de las dos fechas cambia un
+número y no solo un informe.
+
+Cada salida deja además una fila por capa de la que sacó algo. Sin eso, el coste de una
+salida es un número sin explicación, y no habría manera de devolver material al precio al que
+entró.
+
+### Lo que entra se teclea en total, no por unidad
+
+Una entrada pide lo que costó entera, no lo que cuesta cada unidad. Si se pidiera el precio
+unitario habría que multiplicarlo por la cantidad, y el redondeo de esa multiplicación ya no
+cuadraría con la factura que hay encima de la mesa.
+
 ### De momento no se deja bajar de cero
 
 Una salida que dejaría el saldo en negativo se rechaza, y el aviso dice cuánto queda. Es lo
@@ -139,11 +161,12 @@ Hecho:
   `Cantidad` e `Importe` con sus reglas de redondeo, artículos y almacenes.
 - **Fase 1 · Movimientos sin valorar.** Entradas y salidas con fecha contable y momento de
   registro separados, saldo de cantidades y saldo a fecha.
+- **Fase 2 · Valoración FIFO.** Capas de existencias, consumo por antigüedad contable, y la
+  invariante comprobada movimiento a movimiento en los tests.
 
 Lo que viene, en orden:
 
-1. Valoración FIFO por capas, y la invariante comprobada en los tests
-2. Precio medio ponderado conviviendo con FIFO
+1. Precio medio ponderado conviviendo con FIFO
 3. Los casos feos: movimientos retroactivos, devoluciones al coste original, regularizaciones,
    stock negativo
 4. Concurrencia sobre las capas y cierre de periodo

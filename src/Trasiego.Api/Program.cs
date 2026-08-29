@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
 using Trasiego.Aplicacion.Movimientos;
 using Trasiego.Infraestructura;
 using Trasiego.Infraestructura.Persistencia;
@@ -20,6 +21,10 @@ var app = constructor.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    // AddOpenApi solo genera el documento; quien lo pinta y deja lanzar peticiones es
+    // Scalar. Queda en /scalar y solo en desarrollo.
+    app.MapScalarApiReference(opciones => opciones.Title = "Trasiego");
 
     // En desarrollo se migra al arrancar para no tener que acordarse de hacerlo a mano.
     // En produccion las migraciones se aplican en el despliegue, no desde la aplicacion.

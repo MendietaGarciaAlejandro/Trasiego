@@ -15,7 +15,7 @@ public class MovimientoTests
     {
         Assert.Throws<ReglaDeNegocio>(() => new Movimiento(
             Guid.CreateVersion7(), Guid.CreateVersion7(), TipoDeMovimiento.Entrada,
-            Cantidad.Cero, Ayer, Ahora));
+            Cantidad.Cero, Importe.De(10m), Ayer, Ahora));
     }
 
     [Fact]
@@ -23,7 +23,7 @@ public class MovimientoTests
     {
         var movimiento = new Movimiento(
             Guid.CreateVersion7(), Guid.CreateVersion7(), TipoDeMovimiento.Entrada,
-            Cantidad.De(3), Ayer, Ahora, "   ");
+            Cantidad.De(3), Importe.De(10m), Ayer, Ahora, "   ");
 
         Assert.Null(movimiento.Concepto);
     }
@@ -33,10 +33,18 @@ public class MovimientoTests
     {
         var movimiento = new Movimiento(
             Guid.CreateVersion7(), Guid.CreateVersion7(), TipoDeMovimiento.Entrada,
-            Cantidad.De(3), Ayer, Ahora);
+            Cantidad.De(3), Importe.De(10m), Ayer, Ahora);
 
         Assert.Equal(Ayer, movimiento.FechaContable);
         Assert.Equal(Ahora, movimiento.MomentoDeRegistro);
+    }
+
+    [Fact]
+    public void Un_movimiento_con_coste_negativo_no_se_registra()
+    {
+        Assert.Throws<ReglaDeNegocio>(() => new Movimiento(
+            Guid.CreateVersion7(), Guid.CreateVersion7(), TipoDeMovimiento.Entrada,
+            Cantidad.De(1), Importe.De(-1m), Ayer, Ahora));
     }
 
     [Fact]

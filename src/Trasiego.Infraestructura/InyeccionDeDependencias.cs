@@ -23,6 +23,8 @@ public static class InyeccionDeDependencias
         servicios.AddScoped<IRepositorioDeArticulos, RepositorioDeArticulos>();
         servicios.AddScoped<IRepositorioDeAlmacenes, RepositorioDeAlmacenes>();
         servicios.AddScoped<IRepositorioDeMovimientos, RepositorioDeMovimientos>();
+        servicios.AddScoped<IRepositorioDeValoracion, RepositorioDeValoracion>();
+        servicios.AddScoped<IUnidadDeTrabajo, UnidadDeTrabajo>();
 
         return servicios;
     }

@@ -5,7 +5,7 @@ namespace Trasiego.Aplicacion.Abstracciones;
 
 public interface IRepositorioDeMovimientos
 {
-    Task Alta(Movimiento movimiento, CancellationToken cancelacion = default);
+    void Agregar(Movimiento movimiento);
 
     /// <summary>
     /// Lo que hay de un articulo en un almacen. Con <paramref name="aFecha"/> se pregunta
@@ -15,6 +15,15 @@ public interface IRepositorioDeMovimientos
         Guid articuloId,
         Guid almacenId,
         DateOnly? aFecha = null,
+        CancellationToken cancelacion = default);
+
+    /// <summary>
+    /// Lo que ha entrado menos lo que ha salido, en dinero. Es la otra mitad de la
+    /// invariante: tiene que dar lo mismo que el valor de las capas que quedan.
+    /// </summary>
+    Task<Importe> CosteNeto(
+        Guid articuloId,
+        Guid almacenId,
         CancellationToken cancelacion = default);
 
     /// <summary>

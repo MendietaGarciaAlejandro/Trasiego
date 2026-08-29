@@ -22,6 +22,10 @@ public class ConfiguracionDeMovimiento : IEntityTypeConfiguration<Movimiento>
             .HasConversion<ConvertidorDeCantidad>()
             .HasPrecision(18, Cantidad.Decimales);
 
+        movimiento.Property(m => m.Coste)
+            .HasConversion<ConvertidorDeImporte>()
+            .HasPrecision(19, Importe.Decimales);
+
         // date y datetimeoffset, dos columnas de tipos distintos aposta: asi no hay manera
         // de usar una donde toca la otra sin que el compilador se queje.
         movimiento.Property(m => m.FechaContable).HasColumnType("date");
