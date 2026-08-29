@@ -68,13 +68,15 @@ public class RepositorioDeMovimientos(ContextoDeTrasiego contexto) : IRepositori
         Guid articuloId,
         Guid almacenId,
         DateOnly? despuesDe = null,
+        bool conSeguimiento = false,
         CancellationToken cancelacion = default)
     {
-        // Sin seguimiento: esto se usa para mirar, no para cambiar nada, y el recalculo se
-        // monta sus propias capas aparte.
+        // Normalmente esto se usa para mirar, asi que va sin seguimiento. Solo lo pide el
+        // recalculo cuando ademas va a corregir el coste de alguna salida.
         var consulta = contexto.Movimientos
-            .AsNoTracking()
             .Where(m => m.ArticuloId == articuloId && m.AlmacenId == almacenId);
+
+        if (!conSeguimiento) consulta = consulta.AsNoTracking();
 
         if (despuesDe is { } fecha) consulta = consulta.Where(m => m.FechaContable > fecha);
 

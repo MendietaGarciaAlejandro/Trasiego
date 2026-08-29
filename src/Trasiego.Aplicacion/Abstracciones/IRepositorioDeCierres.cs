@@ -8,6 +8,14 @@ public interface IRepositorioDeCierres
 
     void Agregar(SaldoDeCierre saldo);
 
+    void Agregar(FotoDeCapa foto);
+
+    /// <summary>Como estaban las capas de un articulo el dia del cierre.</summary>
+    Task<IReadOnlyList<FotoDeCapa>> FotosDe(
+        Guid cierreId,
+        Guid articuloId,
+        CancellationToken cancelacion = default);
+
     /// <summary>El cierre mas reciente de un almacen, o nada si no se ha cerrado nunca.</summary>
     Task<Cierre?> Ultimo(Guid almacenId, CancellationToken cancelacion = default);
 

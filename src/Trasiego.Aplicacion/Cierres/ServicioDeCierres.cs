@@ -16,6 +16,7 @@ public record Descuadre(
 public class ServicioDeCierres(
     IRepositorioDeAlmacenes almacenes,
     IRepositorioDeCierres cierres,
+    IRepositorioDeValoracion valoracion,
     IUnidadDeTrabajo unidadDeTrabajo,
     TimeProvider reloj)
 {
@@ -40,8 +41,23 @@ public class ServicioDeCierres(
             throw new ReglaDeNegocio(
                 $"{almacen.Codigo} ya esta cerrado hasta el {ultimo.Hasta:dd/MM/yyyy}.");
 
+        // Cerrar debiendo genero seria cerrar sobre una suposicion: lo que salio sin estar
+        // vale lo que se supuso, y todavia puede resultar que costara otra cosa.
+        if (await valoracion.HayDescubiertosPendientes(almacen.Id, cancelacion))
+            throw new ReglaDeNegocio(
+                $"{almacen.Codigo} debe genero sin recibir: tapa los descubiertos antes de cerrar.");
+
         var cierre = new Cierre(almacen.Id, hasta, reloj.GetUtcNow(), concepto);
         cierres.Agregar(cierre);
+
+        // Ademas del saldo se guarda como estaban las capas. El saldo dice cuanto habia y
+        // cuanto valia; el desglose dice en cuantas capas estaba repartido, y en FIFO eso es
+        // lo que decide lo que cuesta la siguiente salida.
+        foreach (var capa in await valoracion.CapasConExistenciasDelAlmacen(almacen.Id, cancelacion))
+            cierres.Agregar(new FotoDeCapa(
+                cierre.Id, capa.Id, capa.ArticuloId,
+                capa.CantidadRestante, capa.CosteRestante,
+                capa.FechaContable, capa.MomentoDeRegistro));
 
         // El valor a una fecha es la suma de los movimientos hasta esa fecha, sin reconstruir
         // capas ni nada: como cada movimiento lleva su coste, esto es un group by. Lo que

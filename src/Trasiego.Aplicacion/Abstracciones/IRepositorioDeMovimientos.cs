@@ -45,6 +45,7 @@ public interface IRepositorioDeMovimientos
         Guid articuloId,
         Guid almacenId,
         DateOnly? despuesDe = null,
+        bool conSeguimiento = false,
         CancellationToken cancelacion = default);
 
     /// <summary>Los articulos de un almacen que tienen algun movimiento que llego tarde.</summary>

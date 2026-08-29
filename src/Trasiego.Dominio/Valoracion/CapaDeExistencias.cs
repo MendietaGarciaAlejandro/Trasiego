@@ -82,6 +82,17 @@ public class CapaDeExistencias
         CosteRestante += coste;
     }
 
+    /// <summary>
+    /// Deja la capa como estaba en un momento dado. Solo lo usa el recalculo, que primero
+    /// deshace todo lo que hay por encima del cierre y despues lo reproduce; en el uso
+    /// normal una capa solo cambia consumiendo, absorbiendo o reponiendo.
+    /// </summary>
+    public void Restaurar(Cantidad cantidad, Importe coste)
+    {
+        CantidadRestante = cantidad;
+        CosteRestante = coste;
+    }
+
     /// <summary>Saca cantidad de la capa y devuelve lo que vale lo que sale.</summary>
     public Importe Consumir(Cantidad cuanto)
     {

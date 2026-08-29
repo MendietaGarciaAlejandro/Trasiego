@@ -19,6 +19,7 @@ public class ContextoDeTrasiego(DbContextOptions<ContextoDeTrasiego> opciones) :
     public DbSet<Descubierto> Descubiertos => Set<Descubierto>();
     public DbSet<Cierre> Cierres => Set<Cierre>();
     public DbSet<SaldoDeCierre> SaldosDeCierre => Set<SaldoDeCierre>();
+    public DbSet<FotoDeCapa> FotosDeCapa => Set<FotoDeCapa>();
 
     protected override void OnModelCreating(ModelBuilder modelo)
     {

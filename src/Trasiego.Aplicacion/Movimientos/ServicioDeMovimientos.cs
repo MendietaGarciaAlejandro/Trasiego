@@ -86,6 +86,15 @@ public class ServicioDeMovimientos(
         if (salida.Tipo is not TipoDeMovimiento.Salida)
             throw new ReglaDeNegocio("Solo se devuelve lo que ha salido.");
 
+        // Una devolucion toca los consumos de la salida original. Si esa salida esta en un
+        // periodo cerrado, tocarlos seria mover algo que se declaro cerrado, y ademas
+        // dejaria el recalculo sin poder deshacerlo. Vuelve a entrar como entrada normal.
+        var cerradoHasta = await cierres.Ultimo(salida.AlmacenId, cancelacion);
+        if (cerradoHasta is not null && salida.FechaContable <= cerradoHasta.Hasta)
+            throw new ReglaDeNegocio(
+                $"Esa salida es del {salida.FechaContable:dd/MM/yyyy}, que ya esta cerrado. " +
+                "Registra lo que vuelve como una entrada, con el coste que le corresponda.");
+
         var (articulo, almacen, retroactivo) = await Comprobaciones(
             salida.ArticuloId, salida.AlmacenId, cantidad, fechaContable, cancelacion);
 

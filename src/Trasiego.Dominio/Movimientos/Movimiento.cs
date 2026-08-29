@@ -55,4 +55,18 @@ public class Movimiento(
 
     public string? Concepto { get; private set; } =
         string.IsNullOrWhiteSpace(concepto) ? null : Comprobar.ComoMucho(concepto.Trim(), 200);
+
+    /// <summary>
+    /// Cambia lo que costo una salida. Solo lo usa el recalculo, y solo por encima del ultimo
+    /// cierre: en el uso normal el coste de una salida se decide al registrarla y no se toca.
+    /// </summary>
+    public void CorregirCoste(Importe coste)
+    {
+        if (Tipo is not TipoDeMovimiento.Salida)
+            throw new ReglaDeNegocio("Solo se corrige el coste de una salida.");
+
+        Coste = coste < Importe.Cero
+            ? throw new ReglaDeNegocio("El coste de un movimiento no puede ser negativo.")
+            : coste;
+    }
 }

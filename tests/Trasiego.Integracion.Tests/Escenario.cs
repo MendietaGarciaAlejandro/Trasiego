@@ -32,13 +32,16 @@ internal static class Escenario
     public static ServicioDeCierres Cierres(ContextoDeTrasiego contexto) =>
         new(new RepositorioDeAlmacenes(contexto),
             new RepositorioDeCierres(contexto),
+            new RepositorioDeValoracion(contexto),
             new UnidadDeTrabajo(contexto),
             Reloj());
 
     public static ServicioDeRecalculo Recalculo(ContextoDeTrasiego contexto) =>
         new(new RepositorioDeArticulos(contexto),
             new RepositorioDeMovimientos(contexto),
-            new RepositorioDeCierres(contexto));
+            new RepositorioDeValoracion(contexto),
+            new RepositorioDeCierres(contexto),
+            new UnidadDeTrabajo(contexto));
 
     public static ServicioDeMovimientos Servicio(ContextoDeTrasiego contexto) =>
         new(new RepositorioDeArticulos(contexto),

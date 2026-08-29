@@ -14,44 +14,50 @@ public record CosteDeSalida(Guid MovimientoId, Importe Registrado, Importe Repro
 public record Reproduccion(
     IReadOnlyList<CosteDeSalida> Salidas,
     Saldo Cantidad,
-    Importe Valor)
+    Importe Valor,
+    IReadOnlyList<CapaDeExistencias> CapasNuevas,
+    IReadOnlyList<ConsumoDeCapa> Consumos,
+    IReadOnlyList<Descubierto> Descubiertos)
 {
     public IReadOnlyList<CosteDeSalida> Descuadradas =>
         [.. Salidas.Where(salida => !salida.Cuadra)];
 }
 
 /// <summary>
-/// Vuelve a valorar un historico desde cero, sin tocar nada, para poder decir en cuanto se
-/// aparta la valoracion que hay de la que saldria si los movimientos hubieran llegado en
-/// orden.
+/// Vuelve a valorar un historico desde el cierre, en el orden en que los movimientos
+/// deberian haber llegado.
 /// </summary>
 /// <remarks>
+/// <para>
+/// No toca nada por su cuenta: recibe las capas de arranque y devuelve lo que habria que
+/// guardar. Quien llama decide si solo quiere comparar o si ademas lo aplica.
+/// </para>
+/// <para>
 /// Las piezas son las mismas que usa el servicio de movimientos: las mismas capas, el mismo
 /// consumo por antiguedad, el mismo reparto de devoluciones. Lo unico que esta escrito dos
 /// veces es el orquestado, y de que las dos versiones no se separen se encarga un test que
 /// reproduce historicos sin retroactivos y exige que salga exactamente lo mismo.
+/// </para>
 /// </remarks>
 public static class Recalculo
 {
     public static Reproduccion Reproducir(
         MetodoDeValoracion metodo,
-        IEnumerable<Movimiento> movimientos,
-        Cantidad aperturaCantidad,
-        Importe aperturaValor,
-        DateOnly aperturaFecha)
+        Guid articuloId,
+        Guid almacenId,
+        IReadOnlyList<CapaDeExistencias> apertura,
+        IEnumerable<Movimiento> movimientos)
     {
-        var capas = new List<CapaDeExistencias>();
+        var capas = new List<CapaDeExistencias>(apertura);
+        var capasNuevas = new List<CapaDeExistencias>();
         var descubiertos = new List<Descubierto>();
+        var consumos = new List<ConsumoDeCapa>();
         var consumosPorSalida = new Dictionary<Guid, List<ConsumoDeCapa>>();
         var salidas = new List<CosteDeSalida>();
 
-        if (!aperturaCantidad.EsCero || !aperturaValor.EsCero)
-            capas.Add(new CapaDeExistencias(
-                Guid.Empty, Guid.Empty, Guid.Empty,
-                aperturaCantidad, aperturaValor, aperturaFecha, DateTimeOffset.MinValue));
-
-        var cantidad = Saldo.De(aperturaCantidad);
-        var valor = aperturaValor;
+        var cantidad = Saldo.De(
+            apertura.Aggregate(Cantidad.Cero, (suma, capa) => suma + capa.CantidadRestante));
+        var valor = apertura.Aggregate(Importe.Cero, (suma, capa) => suma + capa.CosteRestante);
 
         foreach (var movimiento in EnOrden(movimientos))
         {
@@ -71,7 +77,7 @@ public static class Recalculo
             }
         }
 
-        return new Reproduccion(salidas, cantidad, valor);
+        return new Reproduccion(salidas, cantidad, valor, capasNuevas, consumos, descubiertos);
 
         void Entra(Movimiento entrada)
         {
@@ -79,8 +85,8 @@ public static class Recalculo
                 ? Devuelve(entrada)
                 : entrada.Coste;
 
-            // Una devolucion en FIFO ya ha repuesto sus capas; lo demas pasa por el
-            // recorrido normal de tapar descubiertos y abrir o engordar capa.
+            // Una devolucion en FIFO ya ha repuesto sus capas; lo demas pasa por el recorrido
+            // normal de tapar descubiertos y abrir o engordar capa.
             if (entrada.Motivo is MotivoDeMovimiento.Devolucion
                 && metodo is MetodoDeValoracion.Fifo) return;
 
@@ -89,13 +95,13 @@ public static class Recalculo
 
         Importe Devuelve(Movimiento devolucion)
         {
-            // Si la salida original queda por debajo del arranque no hay consumos que
-            // deshacer, asi que se toma tal cual el coste con el que se registro.
+            // Una salida de un periodo cerrado no se puede devolver, asi que si la original
+            // no esta en lo reproducido es que algo no cuadra; se respeta lo registrado.
             if (devolucion.MovimientoOrigenId is not { } origen
-                || !consumosPorSalida.TryGetValue(origen, out var consumos))
+                || !consumosPorSalida.TryGetValue(origen, out var deLaSalida))
                 return devolucion.Coste;
 
-            var vueltas = Devoluciones.Repartir(consumos, devolucion.Cantidad);
+            var vueltas = Devoluciones.Repartir(deLaSalida, devolucion.Cantidad);
 
             if (metodo is MetodoDeValoracion.Fifo)
                 foreach (var vuelta in vueltas)
@@ -110,7 +116,7 @@ public static class Recalculo
             var queda = cantidadQueEntra;
             var quedaCoste = costeQueEntra;
 
-            foreach (var descubierto in descubiertos.Where(d => !d.Saldado))
+            foreach (var descubierto in descubiertos.Where(pendiente => !pendiente.Saldado))
             {
                 if (queda.EsCero) break;
 
@@ -125,12 +131,18 @@ public static class Recalculo
                 ? capas.FirstOrDefault(capa => !capa.Agotada)
                 : null;
 
-            if (abierta is null)
-                capas.Add(new CapaDeExistencias(
-                    Guid.Empty, Guid.Empty, entrada.Id, queda, quedaCoste,
-                    entrada.FechaContable, entrada.MomentoDeRegistro));
-            else
+            if (abierta is not null)
+            {
                 abierta.Absorber(queda, quedaCoste);
+                return;
+            }
+
+            var nueva = new CapaDeExistencias(
+                articuloId, almacenId, entrada.Id, queda, quedaCoste,
+                entrada.FechaContable, entrada.MomentoDeRegistro);
+
+            capas.Add(nueva);
+            capasNuevas.Add(nueva);
         }
 
         Importe Sale(Movimiento salida)
@@ -141,11 +153,13 @@ public static class Recalculo
             var deLasCapas = salida.Cantidad <= disponible ? salida.Cantidad : disponible;
             var tomas = ConsumoDeCapas.Consumir(capas, deLasCapas);
 
-            consumosPorSalida[salida.Id] =
-            [
-                .. tomas.Select((toma, orden) =>
+            var deEstaSalida = tomas
+                .Select((toma, orden) =>
                     new ConsumoDeCapa(salida.Id, toma.CapaId, orden, toma.Cantidad, toma.Coste))
-            ];
+                .ToList();
+
+            consumosPorSalida[salida.Id] = deEstaSalida;
+            consumos.AddRange(deEstaSalida);
 
             var coste = tomas.Aggregate(Importe.Cero, (suma, toma) => suma + toma.Coste);
             var faltan = salida.Cantidad - deLasCapas;
@@ -154,7 +168,7 @@ public static class Recalculo
 
             var enDescubierto = Importe.De(UltimoUnitario() * faltan.Valor);
             descubiertos.Add(new Descubierto(
-                Guid.Empty, Guid.Empty, salida.Id, faltan, enDescubierto));
+                articuloId, almacenId, salida.Id, faltan, enDescubierto));
 
             return coste + enDescubierto;
         }
@@ -169,8 +183,8 @@ public static class Recalculo
     }
 
     /// <summary>
-    /// El orden en que cuentan los movimientos, que no es el orden en que se tecleraron: manda
-    /// la fecha contable.
+    /// El orden en que cuentan los movimientos, que no es en el que se tecleraron: manda la
+    /// fecha contable.
     /// </summary>
     private static IEnumerable<Movimiento> EnOrden(IEnumerable<Movimiento> movimientos) =>
         movimientos

@@ -35,6 +35,25 @@ public interface IRepositorioDeValoracion
 
     void Agregar(Descubierto descubierto);
 
+    /// <summary>Todas las capas con existencias de un almacen, para la foto del cierre.</summary>
+    Task<IReadOnlyList<CapaDeExistencias>> CapasConExistenciasDelAlmacen(
+        Guid almacenId,
+        CancellationToken cancelacion = default);
+
+    Task<bool> HayDescubiertosPendientes(
+        Guid almacenId,
+        CancellationToken cancelacion = default);
+
+    /// <summary>
+    /// Deshace lo que generaron los movimientos posteriores a una fecha: las capas que se
+    /// abrieron, los consumos que hicieron y los descubiertos que dejaron.
+    /// </summary>
+    Task Deshacer(
+        Guid articuloId,
+        Guid almacenId,
+        DateOnly despuesDe,
+        CancellationToken cancelacion = default);
+
     /// <summary>Los descubiertos por tapar, en el orden en que se produjeron.</summary>
     Task<IReadOnlyList<Descubierto>> DescubiertosPendientes(
         Guid articuloId,

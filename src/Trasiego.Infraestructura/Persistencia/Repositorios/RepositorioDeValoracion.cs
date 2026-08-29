@@ -37,6 +37,55 @@ public class RepositorioDeValoracion(ContextoDeTrasiego contexto) : IRepositorio
             .ThenBy(c => c.Id)
             .FirstOrDefaultAsync(cancelacion);
 
+    public async Task<IReadOnlyList<CapaDeExistencias>> CapasConExistenciasDelAlmacen(
+        Guid almacenId,
+        CancellationToken cancelacion = default) =>
+        await contexto.Capas
+            .Where(c => c.AlmacenId == almacenId && c.CantidadRestante != Cantidad.Cero)
+            .OrderBy(c => c.ArticuloId)
+            .ThenBy(c => c.FechaContable)
+            .ToListAsync(cancelacion);
+
+    public Task<bool> HayDescubiertosPendientes(
+        Guid almacenId,
+        CancellationToken cancelacion = default) =>
+        contexto.Descubiertos.AnyAsync(
+            d => d.AlmacenId == almacenId && d.CantidadCubierta != d.Cantidad, cancelacion);
+
+    public async Task Deshacer(
+        Guid articuloId,
+        Guid almacenId,
+        DateOnly despuesDe,
+        CancellationToken cancelacion = default)
+    {
+        // Los movimientos por debajo del cierre no se pueden tocar, asi que todo lo que hay
+        // que deshacer cuelga de movimientos con fecha contable posterior.
+        var deArriba = contexto.Movimientos
+            .Where(m => m.ArticuloId == articuloId
+                     && m.AlmacenId == almacenId
+                     && m.FechaContable > despuesDe)
+            .Select(m => m.Id);
+
+        await contexto.Consumos
+            .Where(c => deArriba.Contains(c.MovimientoId))
+            .ExecuteDeleteAsync(cancelacion);
+
+        await contexto.Descubiertos
+            .Where(d => deArriba.Contains(d.MovimientoId))
+            .ExecuteDeleteAsync(cancelacion);
+
+        await contexto.Capas
+            .Where(c => c.ArticuloId == articuloId
+                     && c.AlmacenId == almacenId
+                     && c.FechaContable > despuesDe)
+            .ExecuteDeleteAsync(cancelacion);
+
+        // Los borrados en bloque van directos a la base de datos y no pasan por el
+        // seguimiento, asi que lo que quedara cargado en memoria ya no existe. Se olvida
+        // todo para que lo que venga despues se lea de nuevo.
+        contexto.ChangeTracker.Clear();
+    }
+
     public async Task<IReadOnlyList<CapaDeExistencias>> CapasPorId(
         IEnumerable<Guid> ids,
         CancellationToken cancelacion = default) =>

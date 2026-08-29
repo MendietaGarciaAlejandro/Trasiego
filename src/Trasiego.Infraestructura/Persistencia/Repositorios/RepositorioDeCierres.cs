@@ -10,6 +10,19 @@ public class RepositorioDeCierres(ContextoDeTrasiego contexto) : IRepositorioDeC
 
     public void Agregar(SaldoDeCierre saldo) => contexto.SaldosDeCierre.Add(saldo);
 
+    public void Agregar(FotoDeCapa foto) => contexto.FotosDeCapa.Add(foto);
+
+    public async Task<IReadOnlyList<FotoDeCapa>> FotosDe(
+        Guid cierreId,
+        Guid articuloId,
+        CancellationToken cancelacion = default) =>
+        await contexto.FotosDeCapa
+            .Where(f => f.CierreId == cierreId && f.ArticuloId == articuloId)
+            .OrderBy(f => f.FechaContable)
+            .ThenBy(f => f.MomentoDeRegistro)
+            .ThenBy(f => f.CapaId)
+            .ToListAsync(cancelacion);
+
     public Task<Cierre?> Ultimo(Guid almacenId, CancellationToken cancelacion = default) =>
         contexto.Cierres
             .Where(c => c.AlmacenId == almacenId)

@@ -31,6 +31,33 @@ public class Cierre(
 }
 
 /// <summary>
+/// Como estaba una capa el dia del cierre. Sin esto no se puede reproducir un historico
+/// desde el cierre: el saldo agregado dice cuanto habia y cuanto valia, pero no en cuantas
+/// capas estaba repartido, y en FIFO eso cambia lo que cuesta la siguiente salida.
+/// </summary>
+public class FotoDeCapa(
+    Guid cierreId,
+    Guid capaId,
+    Guid articuloId,
+    Cantidad cantidad,
+    Importe coste,
+    DateOnly fechaContable,
+    DateTimeOffset momentoDeRegistro)
+{
+    public Guid Id { get; private set; } = Guid.CreateVersion7();
+
+    public Guid CierreId { get; private set; } = cierreId;
+    public Guid CapaId { get; private set; } = capaId;
+    public Guid ArticuloId { get; private set; } = articuloId;
+
+    public Cantidad Cantidad { get; private set; } = cantidad;
+    public Importe Coste { get; private set; } = coste;
+
+    public DateOnly FechaContable { get; private set; } = fechaContable;
+    public DateTimeOffset MomentoDeRegistro { get; private set; } = momentoDeRegistro;
+}
+
+/// <summary>
 /// Lo que se declaro que habia de un articulo al cerrar. Se puede volver a calcular sumando
 /// movimientos, y por eso mismo se guarda: un cierre que deja de cuadrar con lo que dicen
 /// los movimientos es la señal de que alguien ha tocado el pasado.

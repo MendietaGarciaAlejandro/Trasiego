@@ -37,7 +37,7 @@ La cadena de conexión de desarrollo está en `appsettings.Development.json` y a
 no hay ningún secreto que guardar: no lleva usuario ni contraseña. En producción sí saldría
 de user-secrets o de una variable de entorno.
 
-`dotnet test` ejecuta todo (unos 100 tests). Los tests de dominio no tocan la base de datos y son
+`dotnet test` ejecuta todo (unos 106 tests). Los tests de dominio no tocan la base de datos y son
 instantáneos; los de integración crean una base de datos suya en LocalDB al empezar y la
 borran al terminar.
 
@@ -263,8 +263,30 @@ una versión con persistencia y otra sin ella —, y de que no se separen se enc
 reproduce históricos sin retroactivos y exige que salga **exactamente** lo mismo, hasta el
 céntimo y en los dos criterios de valoración.
 
-Aplicar el recálculo no está: haría falta poder devolver las capas a su estado en el cierre, y
-eso hoy no se guarda. Esa es la siguiente fase.
+`Aplicar` sí toca: deshace todo lo que hay por encima del último cierre — las capas que
+abrieron esos movimientos, lo que consumieron y lo que dejaron a deber —, devuelve las capas
+anteriores a como estaban el día del cierre y lo reconstruye todo en orden, corrigiendo el
+coste de las salidas que valoraran distinto. Por debajo del cierre no toca nada.
+
+### Al cerrar se guarda el desglose, no solo el saldo
+
+Que el saldo cuadre no basta para poder reproducir un histórico. El saldo dice cuánto había y
+cuánto valía; en FIFO hace falta saber además **en cuántas capas estaba repartido**, porque eso
+es lo que decide lo que cuesta la siguiente salida. Cinco unidades a 1 € y cinco a 10 € suman
+lo mismo que diez a 5,50 €, pero la siguiente salida de cinco cuesta 5 € en un caso y 27,50 €
+en el otro.
+
+Así que el cierre guarda también una foto de las capas abiertas. Sin ella el recálculo daba un
+número distinto y ningún test lo cogía, porque en todos los que había nunca hubo dos capas
+vivas al cerrar.
+
+Dos reglas salen de aquí, y las dos me parecen correctas por su cuenta:
+
+- **No se cierra debiendo género.** Un descubierto vale lo que se supuso, y todavía puede
+  resultar que costara otra cosa; cerrar sobre eso es cerrar sobre una suposición.
+- **No se devuelve una salida de un periodo cerrado.** Una devolución toca los consumos de la
+  salida original, y esos están congelados. Lo que vuelve se registra como una entrada normal,
+  con el coste que le corresponda.
 
 ### El saldo lleva signo y la cantidad no
 
