@@ -25,6 +25,12 @@ public class ConfiguracionDeCapaDeExistencias : IEntityTypeConfiguration<CapaDeE
 
         capa.Property(c => c.FechaContable).HasColumnType("date");
 
+        // Marca de version, en propiedad en la sombra para no meter ruido de persistencia en
+        // el dominio. Sin esto, dos salidas a la vez leen la misma capa, las dos descuentan
+        // sobre lo que leyeron y la segunda escritura pisa a la primera: el mismo genero sale
+        // dos veces. Con ella la segunda choca y se reintenta desde el principio.
+        capa.Property<byte[]>("Version").IsRowVersion();
+
         // Indice filtrado: las capas agotadas se quedan para poder explicar el historico,
         // pero al buscar de donde sacar una salida solo estorban.
         capa.HasIndex(c => new { c.ArticuloId, c.AlmacenId, c.FechaContable, c.MomentoDeRegistro })

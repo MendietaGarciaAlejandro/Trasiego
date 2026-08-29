@@ -23,6 +23,9 @@ public class ConfiguracionDeDescubierto : IEntityTypeConfiguration<Descubierto>
         descubierto.Property(d => d.CosteCubierto)
             .HasConversion<ConvertidorDeImporte>().HasPrecision(19, Importe.Decimales);
 
+        // Por lo mismo que las capas: dos entradas a la vez pueden tapar el mismo agujero.
+        descubierto.Property<byte[]>("Version").IsRowVersion();
+
         descubierto.HasIndex(d => new { d.ArticuloId, d.AlmacenId });
         descubierto.HasIndex(d => d.MovimientoId);
     }

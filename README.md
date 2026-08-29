@@ -37,7 +37,7 @@ La cadena de conexión de desarrollo está en `appsettings.Development.json` y a
 no hay ningún secreto que guardar: no lleva usuario ni contraseña. En producción sí saldría
 de user-secrets o de una variable de entorno.
 
-`dotnet test` ejecuta todo (unos 106 tests). Los tests de dominio no tocan la base de datos y son
+`dotnet test` ejecuta todo (unos 110 tests). Los tests de dominio no tocan la base de datos y son
 instantáneos; los de integración crean una base de datos suya en LocalDB al empezar y la
 borran al terminar.
 
@@ -287,6 +287,32 @@ Dos reglas salen de aquí, y las dos me parecen correctas por su cuenta:
 - **No se devuelve una salida de un periodo cerrado.** Una devolución toca los consumos de la
   salida original, y esos están congelados. Lo que vuelve se registra como una entrada normal,
   con el coste que le corresponda.
+
+### Dos salidas a la vez no gastan el mismo género
+
+Este es el equivalente aquí del problema que en Camar resolvió una constraint de PostgreSQL,
+y la solución es la contraria. Dos salidas simultáneas del mismo artículo leen las mismas
+capas, las dos descuentan sobre lo que leyeron, y la segunda escritura pisa a la primera: el
+mismo género sale dos veces.
+
+En Camar se podía delegar en la base de datos porque «dos reservas no se solapan» se puede
+escribir como una restricción. Aquí no: «no consumas una capa que otro está consumiendo» no
+es una condición sobre una fila, es sobre una operación entera. Así que va con concurrencia
+optimista — una marca de versión en la capa, y si al guardar alguien se ha adelantado, se
+repite **la operación entera**. Repetir solo el guardado no valdría: si otra salida se ha
+llevado las existencias entre medias, hay que volver a mirar cuánto queda y de qué capas sale.
+
+La marca de versión va como propiedad en la sombra, así que el dominio no se entera de que
+existe.
+
+Y hace falta esperar un poco entre intentos. Sin esa espera, los que chocan reintentan todos
+a la vez y se vuelven a estorbar: con diez peticiones peleando por la misma capa se agotaban
+los intentos sin que entrara nadie. El rato es distinto para cada uno, para que no vuelvan en
+bloque.
+
+Hay tests con diez peticiones simultáneas: sobre cinco unidades entran cinco y las otras
+cinco se van con un aviso claro; sobre diez entran las diez y el almacén queda a cero exacto;
+y con capas de coste distinto, cinco salen a 1 € y cinco a 9 €.
 
 ### El saldo lleva signo y la cantidad no
 

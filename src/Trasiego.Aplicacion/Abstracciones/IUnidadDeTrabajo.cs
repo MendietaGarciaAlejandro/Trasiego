@@ -8,4 +8,13 @@ namespace Trasiego.Aplicacion.Abstracciones;
 public interface IUnidadDeTrabajo
 {
     Task GuardarCambios(CancellationToken cancelacion = default);
+
+    /// <summary>
+    /// Ejecuta una operacion y la repite entera si otro se ha adelantado. Repetirla entera y
+    /// no solo el guardado es lo unico que vale: si otra salida se ha llevado las existencias
+    /// entre medias, hay que volver a mirar cuanto queda y de que capas sale.
+    /// </summary>
+    Task<T> ConReintentos<T>(
+        Func<CancellationToken, Task<T>> operacion,
+        CancellationToken cancelacion = default);
 }

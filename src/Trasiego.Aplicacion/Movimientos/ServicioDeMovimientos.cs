@@ -25,14 +25,27 @@ public class ServicioDeMovimientos(
     /// aposta: si se pidiera el precio unitario habria que multiplicarlo por la cantidad y
     /// el redondeo de esa multiplicacion ya no cuadraria con la factura.
     /// </param>
-    public async Task<Movimiento> RegistrarEntrada(
+    public Task<Movimiento> RegistrarEntrada(
         Guid articuloId,
         Guid almacenId,
         Cantidad cantidad,
         Importe coste,
         DateOnly fechaContable,
         string? concepto = null,
-        CancellationToken cancelacion = default)
+        CancellationToken cancelacion = default) =>
+        unidadDeTrabajo.ConReintentos(
+            cancela => Entrada(
+                articuloId, almacenId, cantidad, coste, fechaContable, concepto, cancela),
+            cancelacion);
+
+    private async Task<Movimiento> Entrada(
+        Guid articuloId,
+        Guid almacenId,
+        Cantidad cantidad,
+        Importe coste,
+        DateOnly fechaContable,
+        string? concepto,
+        CancellationToken cancelacion)
     {
         var (articulo, almacen, retroactivo) = await Comprobaciones(
             articuloId, almacenId, cantidad, fechaContable, cancelacion);
@@ -51,13 +64,25 @@ public class ServicioDeMovimientos(
     /// <summary>
     /// Registra una salida. El coste no se teclea: sale de vaciar capas por antiguedad.
     /// </summary>
-    public async Task<Movimiento> RegistrarSalida(
+    public Task<Movimiento> RegistrarSalida(
         Guid articuloId,
         Guid almacenId,
         Cantidad cantidad,
         DateOnly fechaContable,
         string? concepto = null,
-        CancellationToken cancelacion = default)
+        CancellationToken cancelacion = default) =>
+        unidadDeTrabajo.ConReintentos(
+            cancela => Salida(
+                articuloId, almacenId, cantidad, fechaContable, concepto, cancela),
+            cancelacion);
+
+    private async Task<Movimiento> Salida(
+        Guid articuloId,
+        Guid almacenId,
+        Cantidad cantidad,
+        DateOnly fechaContable,
+        string? concepto,
+        CancellationToken cancelacion)
     {
         var (articulo, almacen, retroactivo) = await Comprobaciones(
             articuloId, almacenId, cantidad, fechaContable, cancelacion);
@@ -73,12 +98,22 @@ public class ServicioDeMovimientos(
     /// <summary>
     /// Devuelve al almacen parte de una salida, al coste al que salio y no al de hoy.
     /// </summary>
-    public async Task<Movimiento> DevolverSalida(
+    public Task<Movimiento> DevolverSalida(
         Guid salidaId,
         Cantidad cantidad,
         DateOnly fechaContable,
         string? concepto = null,
-        CancellationToken cancelacion = default)
+        CancellationToken cancelacion = default) =>
+        unidadDeTrabajo.ConReintentos(
+            cancela => Devolucion(salidaId, cantidad, fechaContable, concepto, cancela),
+            cancelacion);
+
+    private async Task<Movimiento> Devolucion(
+        Guid salidaId,
+        Cantidad cantidad,
+        DateOnly fechaContable,
+        string? concepto,
+        CancellationToken cancelacion)
     {
         var salida = await movimientos.PorId(salidaId, cancelacion)
             ?? throw new NoEncontrado("No existe ese movimiento.");
@@ -137,13 +172,25 @@ public class ServicioDeMovimientos(
     /// Cuadra el sistema con lo que ha dado un recuento. Devuelve el movimiento que ha hecho
     /// falta, o nada si ya cuadraba.
     /// </summary>
-    public async Task<Movimiento?> Regularizar(
+    public Task<Movimiento?> Regularizar(
         Guid articuloId,
         Guid almacenId,
         Cantidad contada,
         DateOnly fechaContable,
         string? concepto = null,
-        CancellationToken cancelacion = default)
+        CancellationToken cancelacion = default) =>
+        unidadDeTrabajo.ConReintentos(
+            cancela => Ajuste(
+                articuloId, almacenId, contada, fechaContable, concepto, cancela),
+            cancelacion);
+
+    private async Task<Movimiento?> Ajuste(
+        Guid articuloId,
+        Guid almacenId,
+        Cantidad contada,
+        DateOnly fechaContable,
+        string? concepto,
+        CancellationToken cancelacion)
     {
         var (articulo, almacen, retroactivo) = await Comprobaciones(
             articuloId, almacenId, contada, fechaContable, cancelacion, permitirCero: true);
