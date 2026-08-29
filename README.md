@@ -112,23 +112,44 @@ abierto para pasar los tests.
 Cada ejecución crea su propia base de datos y la borra al terminar, así que tampoco toca la
 instancia de desarrollo.
 
+### El saldo se calcula sumando movimientos
+
+No hay tabla de existencias. El saldo de un artículo en un almacén es la suma de sus
+movimientos, que es literalmente la invariante del proyecto convertida en consulta. Una tabla
+de existencias mantenida aparte sería más rápida, pero es también otra cosa que puede dejar
+de cuadrar, y todavía no hay ningún problema que la justifique. Cuando llegue la
+concurrencia se verá.
+
+Esa suma va en SQL escrito a mano. `Cantidad` se guarda con un `ValueConverter`, y EF sabe
+convertir el valor de ida y vuelta pero no sabe sumar el tipo del dominio: para agregarlo
+tendría que traerse todos los movimientos y sumarlos en memoria, que es justo lo que no puede
+hacer un saldo de almacén.
+
+### De momento no se deja bajar de cero
+
+Una salida que dejaría el saldo en negativo se rechaza, y el aviso dice cuánto queda. Es lo
+que hace un ERP por defecto. Permitirlo es uno de los casos de la fase 4, y entonces será una
+opción del almacén, no la norma.
+
 ## Por dónde va
 
 Hecho:
 
 - **Fase 0 · Andamiaje.** Solución, capas, conexión a SQL Server, primera migración,
   `Cantidad` e `Importe` con sus reglas de redondeo, artículos y almacenes.
+- **Fase 1 · Movimientos sin valorar.** Entradas y salidas con fecha contable y momento de
+  registro separados, saldo de cantidades y saldo a fecha.
 
 Lo que viene, en orden:
 
-1. Movimientos sin valorar: entradas, salidas y saldo de cantidades
-2. Valoración FIFO por capas, y la invariante comprobada en los tests
-3. Precio medio ponderado conviviendo con FIFO
-4. Los casos feos: movimientos retroactivos, devoluciones al coste original, regularizaciones,
+1. Valoración FIFO por capas, y la invariante comprobada en los tests
+2. Precio medio ponderado conviviendo con FIFO
+3. Los casos feos: movimientos retroactivos, devoluciones al coste original, regularizaciones,
    stock negativo
-5. Concurrencia sobre las capas y cierre de periodo
-6. API
-7. Escritorio en Blazor, con el kardex como pantalla principal
-8. Informes de valoración a fecha
+4. Concurrencia sobre las capas y cierre de periodo
+5. API
+6. Escritorio en Blazor, con el kardex como pantalla principal
+7. Informes de valoración a fecha
 
-Las fases 2 a 5 son el proyecto de verdad; el resto es lo que hace falta para poder verlas.
+Las cuatro primeras de esa lista son el proyecto de verdad; el resto es lo que hace falta
+para poder verlas.

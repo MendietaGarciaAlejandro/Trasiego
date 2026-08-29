@@ -20,4 +20,19 @@ public static class UnidadesDeMedida
         UnidadDeMedida.Metro => "m",
         _ => throw new ArgumentOutOfRangeException(nameof(unidad)),
     };
+
+    public static string EnPlural(this UnidadDeMedida unidad) => unidad switch
+    {
+        UnidadDeMedida.Unidad => "unidades",
+        UnidadDeMedida.Caja => "cajas",
+        UnidadDeMedida.Kilogramo => "kilogramos",
+        UnidadDeMedida.Litro => "litros",
+        UnidadDeMedida.Metro => "metros",
+        _ => throw new ArgumentOutOfRangeException(nameof(unidad)),
+    };
+
+    // Media caja de tornillos no existe, pero medio kilo si. Es la clase de error que si no
+    // se corta al entrar acaba saliendo en un inventario con 2,5 unidades de algo.
+    public static bool AdmiteDecimales(this UnidadDeMedida unidad) =>
+        unidad is not (UnidadDeMedida.Unidad or UnidadDeMedida.Caja);
 }

@@ -1,4 +1,5 @@
 using Trasiego.Dominio.Comun;
+using Trasiego.Dominio.Valores;
 
 namespace Trasiego.Dominio.Catalogo;
 
@@ -28,5 +29,12 @@ public class Articulo(string referencia, string nombre, UnidadDeMedida unidad)
     {
         if (!Activo) throw new Conflicto($"El articulo {Referencia} ya estaba de baja.");
         Activo = false;
+    }
+
+    public void ComprobarCantidad(Cantidad cantidad)
+    {
+        if (!Unidad.AdmiteDecimales() && cantidad.Valor != Math.Truncate(cantidad.Valor))
+            throw new ReglaDeNegocio(
+                $"{Referencia} se lleva en {Unidad.EnPlural()}: {cantidad} no es una cantidad valida.");
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Trasiego.Aplicacion.Movimientos;
 using Trasiego.Infraestructura;
 using Trasiego.Infraestructura.Persistencia;
 
@@ -10,6 +11,9 @@ var cadenaDeConexion = constructor.Configuration.GetConnectionString("Trasiego")
 
 constructor.Services.AgregarInfraestructura(cadenaDeConexion);
 constructor.Services.AddOpenApi();
+
+constructor.Services.AddScoped<ServicioDeMovimientos>();
+constructor.Services.AddSingleton(TimeProvider.System);
 
 var app = constructor.Build();
 
