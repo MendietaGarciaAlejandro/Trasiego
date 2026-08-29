@@ -4,6 +4,8 @@ namespace Trasiego.Aplicacion.Abstracciones;
 
 public interface IRepositorioDeUsuarios
 {
+    Task<Usuario?> PorId(Guid id, CancellationToken cancelacion = default);
+
     Task<Usuario?> PorCorreo(string correo, CancellationToken cancelacion = default);
 
     Task<IReadOnlyList<Usuario>> Listar(CancellationToken cancelacion = default);
@@ -22,7 +24,30 @@ public interface IHuellaDeContrasenas
     bool Coincide(string contrasena, string huella);
 }
 
+public interface IRepositorioDeTokens
+{
+    void Agregar(TokenDeRenovacion token);
+
+    Task<TokenDeRenovacion?> PorHuella(string huella, CancellationToken cancelacion = default);
+
+    /// <summary>Tira todos los de un usuario. Se usa al salir y cuando algo huele mal.</summary>
+    Task RevocarLosDe(Guid usuarioId, CancellationToken cancelacion = default);
+
+    Task GuardarCambios(CancellationToken cancelacion = default);
+}
+
 public interface IGeneradorDeTokens
 {
-    string Para(Usuario usuario);
+    /// <summary>El que viaja en cada peticion. Dura poco a proposito.</summary>
+    string DeAcceso(Usuario usuario);
+
+    /// <summary>
+    /// Uno nuevo para renovar, con su huella. El token en claro solo lo ve quien lo pide;
+    /// lo que se guarda es la huella.
+    /// </summary>
+    (string Token, string Huella) DeRenovacion();
+
+    string HuellaDe(string token);
+
+    TimeSpan LoQueDuraLaRenovacion { get; }
 }

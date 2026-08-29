@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -13,14 +14,14 @@ public class GeneradorDeTokens(IOptions<OpcionesDeToken> opciones, TimeProvider 
 {
     private readonly OpcionesDeToken _opciones = opciones.Value;
 
-    public string Para(Usuario usuario)
+    public TimeSpan LoQueDuraLaRenovacion => TimeSpan.FromDays(_opciones.DiasDeRenovacion);
+
+    public string DeAcceso(Usuario usuario)
     {
         var firma = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_opciones.Clave)),
             SecurityAlgorithms.HmacSha256);
 
-        // Ocho horas por defecto, que es lo que dura un turno: quien entra por la mañana no
-        // tiene que volver a identificarse a media tarde.
         var token = new JwtSecurityToken(
             issuer: _opciones.Emisor,
             audience: _opciones.Audiencia,
@@ -31,9 +32,23 @@ public class GeneradorDeTokens(IOptions<OpcionesDeToken> opciones, TimeProvider 
                 new Claim(ClaimTypes.Name, usuario.Nombre),
                 new Claim(ClaimTypes.Role, usuario.Rol.ToString()),
             ],
-            expires: reloj.GetUtcNow().UtcDateTime.AddHours(_opciones.HorasDeValidez),
+            expires: reloj.GetUtcNow().UtcDateTime.AddMinutes(_opciones.MinutosDeAcceso),
             signingCredentials: firma);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
+
+    public (string Token, string Huella) DeRenovacion()
+    {
+        // Treinta y dos bytes de azar. No lleva nada dentro que haya que leer: solo tiene que
+        // ser imposible de acertar.
+        var token = Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(32));
+        return (token, HuellaDe(token));
+    }
+
+    // SHA-256 y no BCrypt como en las contraseñas: BCrypt va lento aposta porque una
+    // contraseña la elige una persona y se puede probar a adivinar. Esto son 32 bytes de
+    // azar, asi que no hay nada que adivinar y solo hace falta no guardarlo en claro.
+    public string HuellaDe(string token) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 }

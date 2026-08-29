@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -38,14 +39,25 @@ public class ClienteDeTrasiego(HttpClient http)
     public async Task Entrar(string correo, string contrasena)
     {
         // Sin token todavia, asi que esta peticion va suelta a proposito.
-        var entrada = await Mandar<AccesoPedido, EntradaVista>(
-            "api/acceso", new AccesoPedido(correo, contrasena));
+        Apuntar(await Mandar<AccesoPedido, EntradaVista>(
+            "api/acceso", new AccesoPedido(correo, contrasena)));
+    }
 
-        _token = entrada.Token;
-        Nombre = entrada.Nombre;
-        Rol = entrada.Rol;
-
-        SesionCambiada?.Invoke();
+    /// <summary>
+    /// Intenta seguir donde se dejo. La renovacion viaja sola en su cookie, asi que esto no
+    /// manda nada: o hay sesion o no la hay.
+    /// </summary>
+    public async Task<bool> Retomar()
+    {
+        try
+        {
+            Apuntar(await Renovar());
+            return true;
+        }
+        catch (FalloDeTrasiego)
+        {
+            return false;
+        }
     }
 
     /// <summary>
@@ -53,13 +65,43 @@ public class ClienteDeTrasiego(HttpClient http)
     /// aplicacion es salir. Guardarlo seria comodo, pero un token en el almacenamiento del
     /// navegador se lo lleva cualquiera que consiga meter un script en la pagina.
     /// </summary>
-    public void Salir()
+    public async Task Salir()
+    {
+        try
+        {
+            using var peticion = new HttpRequestMessage(HttpMethod.Post, "api/acceso/salir");
+            await http.SendAsync(peticion);
+        }
+        catch (HttpRequestException)
+        {
+            // Si no se llega al servidor, al menos aqui se olvida.
+        }
+
+        Olvidar();
+    }
+
+    private void Olvidar()
     {
         _token = null;
         Nombre = null;
         Rol = null;
 
         SesionCambiada?.Invoke();
+    }
+
+    private void Apuntar(EntradaVista entrada)
+    {
+        _token = entrada.Token;
+        Nombre = entrada.Nombre;
+        Rol = entrada.Rol;
+
+        SesionCambiada?.Invoke();
+    }
+
+    private async Task<EntradaVista> Renovar()
+    {
+        using var peticion = new HttpRequestMessage(HttpMethod.Post, "api/acceso/renovar");
+        return await Leer<EntradaVista>(await http.SendAsync(peticion));
     }
 
     public Task<IReadOnlyList<ArticuloVisto>> Articulos(bool incluirBajas = false) =>
@@ -135,12 +177,52 @@ public class ClienteDeTrasiego(HttpClient http)
         return await Leer<TRespuesta>(await Enviar(peticion));
     }
 
-    private Task<HttpResponseMessage> Enviar(HttpRequestMessage peticion)
+    private async Task<HttpResponseMessage> Enviar(HttpRequestMessage peticion)
+    {
+        var respuesta = await Firmar(peticion);
+        if (respuesta.StatusCode is not HttpStatusCode.Unauthorized) return respuesta;
+
+        // El token de acceso dura poco. Cuando caduca a media faena se renueva y se repite
+        // la peticion, y quien esta trabajando no se entera de nada.
+        respuesta.Dispose();
+
+        try
+        {
+            Apuntar(await Renovar());
+        }
+        catch (FalloDeTrasiego)
+        {
+            Olvidar();
+            throw new FalloDeTrasiego("La sesion ha caducado. Vuelve a entrar.");
+        }
+
+        using var otraVez = await Repetir(peticion);
+        return await Firmar(otraVez);
+    }
+
+    private Task<HttpResponseMessage> Firmar(HttpRequestMessage peticion)
     {
         if (_token is not null)
             peticion.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
 
         return http.SendAsync(peticion);
+    }
+
+    /// <summary>
+    /// Un HttpRequestMessage no se puede mandar dos veces, asi que para reintentar hay que
+    /// hacer otro igual.
+    /// </summary>
+    private static async Task<HttpRequestMessage> Repetir(HttpRequestMessage original)
+    {
+        var copia = new HttpRequestMessage(original.Method, original.RequestUri);
+
+        if (original.Content is not null)
+            copia.Content = new StringContent(
+                await original.Content.ReadAsStringAsync(),
+                System.Text.Encoding.UTF8,
+                "application/json");
+
+        return copia;
     }
 
     private static async Task<T> Leer<T>(HttpResponseMessage respuesta)

@@ -13,5 +13,12 @@ public class OpcionesDeToken
     /// </summary>
     public string Clave { get; set; } = "";
 
-    public int HorasDeValidez { get; set; } = 8;
+    /// <summary>
+    /// Lo que dura el token de acceso. Poco a proposito: si alguien lo intercepta, deja de
+    /// servirle enseguida, y quien esta trabajando ni se entera porque se renueva solo.
+    /// </summary>
+    public int MinutosDeAcceso { get; set; } = 15;
+
+    /// <summary>Lo que se puede estar sin teclear la contraseña otra vez.</summary>
+    public int DiasDeRenovacion { get; set; } = 7;
 }

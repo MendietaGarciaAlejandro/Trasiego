@@ -34,9 +34,9 @@
 @code {
     // Vuelve al kardex antes de cerrar, para que al entrar otra vez no se caiga en una
     // pantalla que quiza el siguiente no pueda ver.
-    private void Salir()
+    private async Task Salir()
     {
         navegacion.NavigateTo("");
-        trasiego.Salir();
+        await trasiego.Salir();
     }
 }

@@ -6,6 +6,9 @@ namespace Trasiego.Infraestructura.Persistencia.Repositorios;
 
 public class RepositorioDeUsuarios(ContextoDeTrasiego contexto) : IRepositorioDeUsuarios
 {
+    public Task<Usuario?> PorId(Guid id, CancellationToken cancelacion = default) =>
+        contexto.Usuarios.FirstOrDefaultAsync(u => u.Id == id, cancelacion);
+
     public Task<Usuario?> PorCorreo(string correo, CancellationToken cancelacion = default) =>
         contexto.Usuarios.FirstOrDefaultAsync(u => u.Correo == correo, cancelacion);
 

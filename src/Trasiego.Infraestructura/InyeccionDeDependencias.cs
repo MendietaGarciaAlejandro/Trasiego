@@ -27,6 +27,7 @@ public static class InyeccionDeDependencias
         servicios.AddScoped<IRepositorioDeValoracion, RepositorioDeValoracion>();
         servicios.AddScoped<IRepositorioDeCierres, RepositorioDeCierres>();
         servicios.AddScoped<IRepositorioDeUsuarios, RepositorioDeUsuarios>();
+        servicios.AddScoped<IRepositorioDeTokens, RepositorioDeTokens>();
         servicios.AddScoped<IUnidadDeTrabajo, UnidadDeTrabajo>();
 
         servicios.AddSingleton<IHuellaDeContrasenas, HuellaBCrypt>();

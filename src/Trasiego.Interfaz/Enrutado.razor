@@ -1,7 +1,11 @@
 @implements IDisposable
 @inject ClienteDeTrasiego trasiego
 
-@if (!trasiego.HaEntrado)
+@if (comprobando)
+{
+    <p class="vacio portada">Abriendo Trasiego...</p>
+}
+else if (!trasiego.HaEntrado)
 {
     <Acceso />
 }
@@ -20,7 +24,17 @@ else
 }
 
 @code {
-    protected override void OnInitialized() => trasiego.SesionCambiada += Repintar;
+    private bool comprobando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        trasiego.SesionCambiada += Repintar;
+
+        // Al abrir se prueba a seguir donde se dejo: si la renovacion sigue valiendo, su
+        // cookie viaja sola y no hay que volver a teclear nada.
+        await trasiego.Retomar();
+        comprobando = false;
+    }
 
     public void Dispose() => trasiego.SesionCambiada -= Repintar;
 

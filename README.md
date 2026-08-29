@@ -47,7 +47,7 @@ Para el escritorio, con la Api levantada:
 dotnet run --project src/Trasiego.Escritorio
 ```
 
-`dotnet test` ejecuta todo (unos 139 tests). Los de la API levantan la aplicación entera con `WebApplicationFactory` contra la misma base de datos de pruebas. Los tests de dominio no tocan la base de datos y son
+`dotnet test` ejecuta todo (unos 145 tests). Los de la API levantan la aplicación entera con `WebApplicationFactory` contra la misma base de datos de pruebas. Los tests de dominio no tocan la base de datos y son
 instantáneos; los de integración crean una base de datos suya en LocalDB al empezar y la
 borran al terminar.
 
@@ -425,9 +425,28 @@ botones que no van a funcionar, pero eso es cortesía, no seguridad.
 Entrar con un correo que no existe da exactamente el mismo aviso que entrar con la contraseña
 cambiada. Si fueran distintos, probando correos se sabría cuáles están dados de alta.
 
-El token se queda en memoria y no se guarda en ningún sitio, así que cerrar la aplicación es
-salir. Guardarlo sería más cómodo, pero un token en el almacenamiento del navegador se lo
-lleva cualquiera que consiga meter un script en la página.
+### La sesión aguanta un recargado sin dejar el token a la vista
+
+Son dos cosas distintas. El **token de acceso** viaja en cada petición, dura quince minutos y
+vive en memoria: si alguien lo intercepta, deja de servirle enseguida. La **renovación** dura
+una semana y va en una cookie `HttpOnly`, así que ningún guion de la página puede leerla — que
+es justo lo que la hace mejor que guardar el JWT en el almacenamiento del navegador, donde se
+lo lleva cualquiera que consiga inyectar código.
+
+La renovación no sale nunca por el cuerpo de una respuesta. Si saliera, daría igual que la
+cookie fuera inaccesible.
+
+Al abrir, el cliente prueba a renovar; si la cookie sigue valiendo, se sigue donde se dejó sin
+teclear nada. Y cuando el token de acceso caduca a media faena, se renueva y se repite la
+petición, así que quien está trabajando no se entera.
+
+Cada renovación gasta la anterior y emite otra. Una gastada que vuelve a aparecer significa
+que alguien tiene una copia — la nuestra o la suya, y no hay forma de saber cuál —, así que se
+tiran todas las de ese usuario y vuelve a entrar quien sepa la contraseña.
+
+De la renovación solo se guarda su huella, igual que con las contraseñas. Ahí va SHA-256 y no
+BCrypt: BCrypt va lento a propósito porque una contraseña la elige una persona y se puede
+probar a adivinar, pero esto son treinta y dos bytes de azar y no hay nada que adivinar.
 
 ### El saldo lleva signo y la cantidad no
 

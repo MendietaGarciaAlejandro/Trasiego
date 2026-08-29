@@ -13,6 +13,7 @@ namespace Trasiego.Infraestructura.Persistencia;
 public class ContextoDeTrasiego(DbContextOptions<ContextoDeTrasiego> opciones) : DbContext(opciones)
 {
     public DbSet<Usuario> Usuarios => Set<Usuario>();
+    public DbSet<TokenDeRenovacion> Renovaciones => Set<TokenDeRenovacion>();
     public DbSet<Articulo> Articulos => Set<Articulo>();
     public DbSet<Almacen> Almacenes => Set<Almacen>();
     public DbSet<Movimiento> Movimientos => Set<Movimiento>();
