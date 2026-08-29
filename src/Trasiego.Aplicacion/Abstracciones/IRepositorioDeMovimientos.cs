@@ -38,10 +38,17 @@ public interface IRepositorioDeMovimientos
 
     /// <summary>
     /// Los movimientos en el orden en que cuentan: por fecha contable, y a igualdad de
-    /// fecha, por el momento en que se registraron.
+    /// fecha, por el momento en que se registraron. Con <paramref name="despuesDe"/> se pide
+    /// solo lo que hay por encima de esa fecha, que es lo que se puede reproducir.
     /// </summary>
     Task<IReadOnlyList<Movimiento>> Listar(
         Guid articuloId,
+        Guid almacenId,
+        DateOnly? despuesDe = null,
+        CancellationToken cancelacion = default);
+
+    /// <summary>Los articulos de un almacen que tienen algun movimiento que llego tarde.</summary>
+    Task<IReadOnlyList<Guid>> ArticulosConRetroactivos(
         Guid almacenId,
         CancellationToken cancelacion = default);
 }

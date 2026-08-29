@@ -86,7 +86,7 @@ public class MovimientosEnBaseDeDatosTests(BaseDeDatosDePruebas baseDeDatos)
 
         Assert.Equal(Saldo.De(65), await movimientos.SaldoDe(articulo.Id, almacen.Id, elDiaDiez));
         Assert.Equal(elDiaDiez, traspapelado.FechaContable);
-        Assert.Equal(Escenario.Ahora, traspapelado.MomentoDeRegistro);
+        Assert.True(traspapelado.MomentoDeRegistro >= Escenario.Ahora);
     }
 
     [Fact]

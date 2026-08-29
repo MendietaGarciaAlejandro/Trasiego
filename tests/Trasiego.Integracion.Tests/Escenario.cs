@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Time.Testing;
 using Trasiego.Aplicacion.Cierres;
 using Trasiego.Aplicacion.Movimientos;
+using Trasiego.Aplicacion.Valoracion;
 using Trasiego.Dominio.Almacenes;
 using Trasiego.Dominio.Catalogo;
 using Trasiego.Dominio.Valoracion;
@@ -18,11 +19,26 @@ internal static class Escenario
     // articulo y su almacen: con referencias fijas se pisarian unos a otros.
     private static int _siguiente;
 
+    /// <summary>
+    /// Un reloj parado deja a todos los movimientos con el mismo momento de registro, y eso
+    /// no pasa en la realidad: dos altas seguidas ocurren en instantes distintos. Con el
+    /// reloj clavado los empates se resolvian por id, que es aleatorio, y habia sitios donde
+    /// el orden importaba. Cada lectura avanza un segundo, que sigue dejando todo en el
+    /// mismo dia contable.
+    /// </summary>
+    private static FakeTimeProvider Reloj() =>
+        new(Ahora) { AutoAdvanceAmount = TimeSpan.FromSeconds(1) };
+
     public static ServicioDeCierres Cierres(ContextoDeTrasiego contexto) =>
         new(new RepositorioDeAlmacenes(contexto),
             new RepositorioDeCierres(contexto),
             new UnidadDeTrabajo(contexto),
-            new FakeTimeProvider(Ahora));
+            Reloj());
+
+    public static ServicioDeRecalculo Recalculo(ContextoDeTrasiego contexto) =>
+        new(new RepositorioDeArticulos(contexto),
+            new RepositorioDeMovimientos(contexto),
+            new RepositorioDeCierres(contexto));
 
     public static ServicioDeMovimientos Servicio(ContextoDeTrasiego contexto) =>
         new(new RepositorioDeArticulos(contexto),
@@ -31,7 +47,7 @@ internal static class Escenario
             new RepositorioDeValoracion(contexto),
             new RepositorioDeCierres(contexto),
             new UnidadDeTrabajo(contexto),
-            new FakeTimeProvider(Ahora));
+            Reloj());
 
     public static async Task<(Articulo Articulo, Almacen Almacen)> Catalogo(
         ContextoDeTrasiego contexto,

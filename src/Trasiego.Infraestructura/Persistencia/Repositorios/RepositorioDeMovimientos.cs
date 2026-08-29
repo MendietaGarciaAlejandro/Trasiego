@@ -67,10 +67,30 @@ public class RepositorioDeMovimientos(ContextoDeTrasiego contexto) : IRepositori
     public async Task<IReadOnlyList<Movimiento>> Listar(
         Guid articuloId,
         Guid almacenId,
-        CancellationToken cancelacion = default) =>
-        await contexto.Movimientos
-            .Where(m => m.ArticuloId == articuloId && m.AlmacenId == almacenId)
+        DateOnly? despuesDe = null,
+        CancellationToken cancelacion = default)
+    {
+        // Sin seguimiento: esto se usa para mirar, no para cambiar nada, y el recalculo se
+        // monta sus propias capas aparte.
+        var consulta = contexto.Movimientos
+            .AsNoTracking()
+            .Where(m => m.ArticuloId == articuloId && m.AlmacenId == almacenId);
+
+        if (despuesDe is { } fecha) consulta = consulta.Where(m => m.FechaContable > fecha);
+
+        return await consulta
             .OrderBy(m => m.FechaContable)
             .ThenBy(m => m.MomentoDeRegistro)
+            .ThenBy(m => m.Id)
+            .ToListAsync(cancelacion);
+    }
+
+    public async Task<IReadOnlyList<Guid>> ArticulosConRetroactivos(
+        Guid almacenId,
+        CancellationToken cancelacion = default) =>
+        await contexto.Movimientos
+            .Where(m => m.AlmacenId == almacenId && m.Retroactivo)
+            .Select(m => m.ArticuloId)
+            .Distinct()
             .ToListAsync(cancelacion);
 }

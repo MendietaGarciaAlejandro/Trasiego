@@ -37,7 +37,7 @@ La cadena de conexión de desarrollo está en `appsettings.Development.json` y a
 no hay ningún secreto que guardar: no lleva usuario ni contraseña. En producción sí saldría
 de user-secrets o de una variable de entorno.
 
-`dotnet test` ejecuta todo. Los tests de dominio no tocan la base de datos y son
+`dotnet test` ejecuta todo (unos 100 tests). Los tests de dominio no tocan la base de datos y son
 instantáneos; los de integración crean una base de datos suya en LocalDB al empezar y la
 borran al terminar.
 
@@ -250,6 +250,21 @@ poder verlo antes de fiarse de un informe.
 
 Recalcular de verdad es lo siguiente, y ahora ya se puede: el cierre da el punto desde el que
 empezar y el límite de hasta dónde se puede tocar.
+
+### Reproducir el histórico para saber cuánto se aparta
+
+`Recalculo.Reproducir` vuelve a valorar un histórico desde el último cierre, en el orden en
+que los movimientos deberían haber llegado, y dice en cuánto se aparta cada salida de lo que
+se registró en su día. No cambia nada: solo mira.
+
+Las piezas son las mismas que usa el servicio: las mismas capas, el mismo consumo por
+antigüedad, el mismo reparto de devoluciones. Lo único escrito dos veces es el orquestado —
+una versión con persistencia y otra sin ella —, y de que no se separen se encarga un test que
+reproduce históricos sin retroactivos y exige que salga **exactamente** lo mismo, hasta el
+céntimo y en los dos criterios de valoración.
+
+Aplicar el recálculo no está: haría falta poder devolver las capas a su estado en el cierre, y
+eso hoy no se guarda. Esa es la siguiente fase.
 
 ### El saldo lleva signo y la cantidad no
 

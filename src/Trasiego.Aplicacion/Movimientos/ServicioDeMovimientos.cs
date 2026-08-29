@@ -276,8 +276,9 @@ public class ServicioDeMovimientos(
 
         movimientos.Agregar(salida);
 
-        foreach (var toma in tomas)
-            valoracion.Agregar(new ConsumoDeCapa(salida.Id, toma.CapaId, toma.Cantidad, toma.Coste));
+        for (var orden = 0; orden < tomas.Count; orden++)
+            valoracion.Agregar(new ConsumoDeCapa(
+                salida.Id, tomas[orden].CapaId, orden, tomas[orden].Cantidad, tomas[orden].Coste));
 
         if (!faltan.EsCero)
             valoracion.Agregar(new Descubierto(

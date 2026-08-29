@@ -7,12 +7,24 @@ namespace Trasiego.Dominio.Valoracion;
 /// De que capa salio cada trozo de una salida. Sin esto el coste de una salida es un numero
 /// sin explicacion, y no hay manera de devolver material al precio al que entro.
 /// </summary>
-public class ConsumoDeCapa(Guid movimientoId, Guid capaId, Cantidad cantidad, Importe coste)
+public class ConsumoDeCapa(
+    Guid movimientoId,
+    Guid capaId,
+    int orden,
+    Cantidad cantidad,
+    Importe coste)
 {
     public Guid Id { get; private set; } = Guid.CreateVersion7();
 
     public Guid MovimientoId { get; private set; } = movimientoId;
     public Guid CapaId { get; private set; } = capaId;
+
+    // El orden en que se vacio cada capa, guardado a mano. Hizo falta porque una devolucion
+    // reparte por este orden, y sin un campo propio no habia forma de recuperarlo: los ids
+    // son Guid version 7 y su marca de tiempo llega al milisegundo, asi que dos consumos de
+    // la misma salida se ordenaban al azar y la devolucion volvia unas veces al coste de una
+    // capa y otras al de otra.
+    public int Orden { get; private set; } = orden;
 
     public Cantidad Cantidad { get; private set; } = cantidad;
     public Importe Coste { get; private set; } = coste;

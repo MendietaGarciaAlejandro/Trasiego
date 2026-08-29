@@ -57,6 +57,9 @@ public class DevolucionesTests
         Assert.Equal(otro.CapaId, vueltas.Single().CapaId);
     }
 
+    private static int _orden;
+
     private static ConsumoDeCapa Consumo(decimal cantidad, decimal coste) =>
-        new(Guid.CreateVersion7(), Guid.CreateVersion7(), Cantidad.De(cantidad), Importe.De(coste));
+        new(Guid.CreateVersion7(), Guid.CreateVersion7(), _orden++,
+            Cantidad.De(cantidad), Importe.De(coste));
 }
