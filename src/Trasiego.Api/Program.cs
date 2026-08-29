@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using Trasiego.Api.Errores;
+using Trasiego.Api.Mantenimiento;
 using Trasiego.Aplicacion.Abstracciones;
 using Trasiego.Aplicacion.Acceso;
 using Trasiego.Aplicacion.Almacenes;
@@ -73,6 +74,7 @@ constructor.Services.AddScoped<ServicioDeCierres>();
 constructor.Services.AddScoped<ServicioDeInformes>();
 constructor.Services.AddScoped<ServicioDeRecalculo>();
 constructor.Services.AddSingleton(TimeProvider.System);
+constructor.Services.AddHostedService<LimpiezaDeRenovaciones>();
 
 constructor.Services.AddProblemDetails();
 constructor.Services.AddExceptionHandler<ManejadorDeExcepcionesDeDominio>();

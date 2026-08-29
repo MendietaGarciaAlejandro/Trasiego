@@ -33,6 +33,11 @@ public interface IRepositorioDeTokens
     /// <summary>Tira todos los de un usuario. Se usa al salir y cuando algo huele mal.</summary>
     Task RevocarLosDe(Guid usuarioId, CancellationToken cancelacion = default);
 
+    /// <summary>
+    /// Se lleva las renovaciones que ya habian caducado. Devuelve cuantas eran.
+    /// </summary>
+    Task<int> BorrarCaducadas(DateTimeOffset hasta, CancellationToken cancelacion = default);
+
     Task GuardarCambios(CancellationToken cancelacion = default);
 }
 

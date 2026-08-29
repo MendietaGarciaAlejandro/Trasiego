@@ -28,28 +28,31 @@ Todo lo demás del proyecto está para que esa frase siga siendo verdad.
 
 Hace falta SQL Server (vale Developer Edition) y LocalDB para los tests. No hace falta Docker.
 
-```
+```bash
 dotnet tool restore
+dotnet user-secrets set "Jwt:Clave" "una clave larga y aleatoria" --project src/Trasiego.Api
 dotnet ef database update --project src/Trasiego.Infraestructura --startup-project src/Trasiego.Api
 dotnet run --project src/Trasiego.Api
 ```
 
-Eso levanta la Api y, en la misma dirección, el cliente web: `http://localhost:5248`.
-
-La cadena de conexión de desarrollo está en `appsettings.Development.json` y apunta a
-`localhost` con autenticación integrada. No la puse en user-secrets como en Camar porque aquí
-no hay ningún secreto que guardar: no lleva usuario ni contraseña. En producción sí saldría
-de user-secrets o de una variable de entorno.
-
-Para el escritorio, con la Api levantada:
+Eso levanta la Api y, en la misma dirección, el cliente web: `http://localhost:5248`. Para el
+escritorio, con la Api ya levantada:
 
 ```bash
 dotnet run --project src/Trasiego.Escritorio
 ```
 
-`dotnet test` ejecuta todo (unos 145 tests). Los de la API levantan la aplicación entera con `WebApplicationFactory` contra la misma base de datos de pruebas. Los tests de dominio no tocan la base de datos y son
-instantáneos; los de integración crean una base de datos suya en LocalDB al empezar y la
-borran al terminar.
+En desarrollo se siembran dos usuarios con los que entrar, los dos con la contraseña
+`trasiego-demo-2026`: `encargada@trasiego.test` (responsable) y `operario@trasiego.test`.
+
+La cadena de conexión está en `appsettings.Development.json` y apunta a `localhost` con
+autenticación integrada: ahí no hay ningún secreto que guardar, porque no lleva usuario ni
+contraseña. La clave de firma sí, y por eso va en user-secrets; sin ella la Api se niega a
+arrancar y dice el comando.
+
+`dotnet test` ejecuta todo, unos 147 tests. Los de dominio no tocan la base de datos y son
+instantáneos; los de integración crean una base suya en LocalDB al empezar y la borran al
+terminar, y los de la Api levantan la aplicación entera con `WebApplicationFactory`.
 
 ## Alcance
 
@@ -448,6 +451,12 @@ De la renovación solo se guarda su huella, igual que con las contraseñas. Ahí
 BCrypt: BCrypt va lento a propósito porque una contraseña la elige una persona y se puede
 probar a adivinar, pero esto son treinta y dos bytes de azar y no hay nada que adivinar.
 
+Cada doce horas pasa algo a tirar las que ya habían caducado, porque si no la tabla solo
+crece: se apunta una cada vez que alguien entra o renueva, y renovar pasa cada cuarto de hora
+mientras se trabaja. Se borran **solo por fecha**, aunque estén gastadas: una gastada sigue
+haciendo falta mientras podría presentarse, porque es lo que delata que alguien tiene una
+copia. Pasada su fecha ya no delata nada, porque de todas formas se rechazaría por caducada.
+
 ### El saldo lleva signo y la cantidad no
 
 Desde el principio dije que una `Cantidad` es una magnitud y nunca es negativa, y que el
@@ -455,26 +464,39 @@ saldo de un almacén sí puede serlo. Aquí es donde hizo falta el tipo aparte: 
 signo, sabe si está en descubierto, y su `Disponible` es cero cuando lo está. Una cantidad
 sigue sin poder ser negativa, así que una capa tampoco.
 
-## Por dónde va
+## Por dónde ha ido
 
-Hecho:
+El plan eran doce fases, y después salieron cuatro cosas más de las que fueron apareciendo por
+el camino.
 
-- **Fase 0 · Andamiaje.** Solución, capas, conexión a SQL Server, primera migración,
-  `Cantidad` e `Importe` con sus reglas de redondeo, artículos y almacenes.
-- **Fase 1 · Movimientos sin valorar.** Entradas y salidas con fecha contable y momento de
-  registro separados, saldo de cantidades y saldo a fecha.
-- **Fase 2 · Valoración FIFO.** Capas de existencias, consumo por antigüedad contable, y la
-  invariante comprobada movimiento a movimiento en los tests.
+1. **Andamiaje.** Capas, SQL Server, `Cantidad` e `Importe` con sus reglas de redondeo.
+2. **Movimientos sin valorar.** Fecha contable y momento de registro separados, y el saldo.
+3. **Valoración FIFO.** Capas de existencias y la invariante comprobada movimiento a movimiento.
+4. **Precio medio ponderado.** Que resultó ser FIFO con una sola capa.
+5. **Devoluciones y regularizaciones.** Devolver al coste original, y cuadrar con un recuento.
+6. **Stock negativo.** Descubierto por almacén y la diferencia absorbida por lo que quede.
+7. **Cierre de periodo.** Por almacén, con lo declarado guardado y comprobable.
+8. **Recálculo que compara.** Reproduce el histórico y dice en cuánto se aparta.
+9. **Recálculo que se aplica.** Foto de las capas al cerrar y reconstrucción por encima.
+10. **Concurrencia.** Marca de versión en las capas y reintento con espera.
+11. **API.** Controllers y fallos de negocio traducidos a ProblemDetails.
+12. **Escritorio.** WPF con BlazorWebView y el kardex como pantalla principal.
+13. **Informes.** Valoración a fecha, y las pantallas de cierre y recálculo.
+14. **Versión web.** WebAssembly servido por la Api, con las mismas pantallas.
+15. **Traspasos entre almacenes.** El coste que sale de uno es el que entra en el otro.
+16. **Autenticación.** JWT con dos roles, y la sesión aguantando un recargado.
 
-Lo que viene, en orden:
+De todo eso, las fases 3 a 9 son el proyecto de verdad: lo demás es lo que hace falta para
+poder verlo.
 
-1. Precio medio ponderado conviviendo con FIFO
-3. Los casos feos: movimientos retroactivos, devoluciones al coste original, regularizaciones,
-   stock negativo
-4. Concurrencia sobre las capas y cierre de periodo
-5. API
-6. Escritorio en Blazor, con el kardex como pantalla principal
-7. Informes de valoración a fecha
+## Siguientes pasos
 
-Las cuatro primeras de esa lista son el proyecto de verdad; el resto es lo que hace falta
-para poder verlas.
+Lo que se me ocurre a partir de aquí, por orden de ganas:
+
+- **Que el escritorio también recuerde la sesión.** En la web la cookie sobrevive al recargado,
+  pero al cerrar la ventana de WPF se pierde. Habría que guardar la renovación en el
+  almacenamiento de credenciales de Windows, que no es lo mismo que dejarla en un fichero.
+- **Documentos detrás de los movimientos.** Ahora un albarán es un concepto escrito a mano en
+  un campo de texto. Un albarán de verdad agrupa líneas, y eso cambia bastantes cosas.
+- **Lotes y caducidades.** Está fuera del alcance a propósito, pero es lo que pediría cualquiera
+  que trabaje con alimentación o con farmacia, y encaja bien con las capas que ya hay.

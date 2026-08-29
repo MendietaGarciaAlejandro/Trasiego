@@ -91,6 +91,13 @@ public class ServicioDeAcceso(
     public Task<IReadOnlyList<Usuario>> Listar(CancellationToken cancelacion = default) =>
         usuarios.Listar(cancelacion);
 
+    /// <summary>
+    /// Tira las renovaciones que ya habian caducado. Si no, la tabla solo crece: cada vez
+    /// que alguien entra o renueva se apunta una mas.
+    /// </summary>
+    public Task<int> LimpiarRenovacionesCaducadas(CancellationToken cancelacion = default) =>
+        renovaciones.BorrarCaducadas(reloj.GetUtcNow(), cancelacion);
+
     private async Task<Entrada> Emitir(Usuario usuario, CancellationToken cancelacion)
     {
         var (renovacion, huella) = tokens.DeRenovacion();

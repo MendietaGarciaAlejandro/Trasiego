@@ -24,6 +24,17 @@ public class RepositorioDeTokens(ContextoDeTrasiego contexto) : IRepositorioDeTo
         contexto.ChangeTracker.Clear();
     }
 
+    public Task<int> BorrarCaducadas(
+        DateTimeOffset hasta,
+        CancellationToken cancelacion = default) =>
+        // Solo por fecha, aunque esten gastadas o revocadas. Una gastada sigue haciendo
+        // falta mientras podria presentarse: si reaparece, es lo que delata que alguien
+        // tiene una copia. Pasada su fecha ya no delata nada, porque de todas formas se
+        // rechazaria por caducada.
+        contexto.Renovaciones
+            .Where(t => t.Caduca < hasta)
+            .ExecuteDeleteAsync(cancelacion);
+
     public Task GuardarCambios(CancellationToken cancelacion = default) =>
         contexto.SaveChangesAsync(cancelacion);
 }
