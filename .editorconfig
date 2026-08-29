@@ -1,0 +1,38 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+
+[*.{json,yml,yaml,csproj,props,slnx}]
+indent_size = 2
+
+[*.cs]
+# Namespaces de una linea: menos indentacion en todo el fichero.
+csharp_style_namespace_declarations = file_scoped:warning
+
+# Los using van fuera del namespace y ordenados, con los de System primero.
+csharp_using_directive_placement = outside_namespace:warning
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+
+# Avisar de los using que sobran (los que deja la plantilla de Visual Studio).
+dotnet_diagnostic.IDE0005.severity = warning
+
+# var cuando el tipo ya se ve en la linea.
+csharp_style_var_when_type_is_apparent = true:suggestion
+
+# Preferir expresiones a bloques en miembros de una sola linea.
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+
+# Modificadores de accesibilidad siempre explicitos.
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:warning
+
+[**/Migraciones/*.cs]
+# Codigo generado por EF: no se le aplica el estilo.
+generated_code = true

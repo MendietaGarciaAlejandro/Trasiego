@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Trasiego.Api": {
+      "commandName": "Project",
+      "launchBrowser": false,
+      "applicationUrl": "https://localhost:7248;http://localhost:5248",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

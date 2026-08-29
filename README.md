@@ -1,0 +1,134 @@
+# Trasiego
+
+ERP de inventario con valoración. Un trasiego es pasar algo de un recipiente a otro, que es
+literalmente lo que hace un movimiento de existencias.
+
+La idea no es abarcar mucho, sino ir hondo en una sola cosa. Un CRUD de almacén lo hace
+cualquiera; lo que tiene miga es que el **valor** del almacén cuadre siempre, y que siga
+cuadrando cuando alguien mete un movimiento con fecha del mes pasado, devuelve material que
+compró a otro precio, o dos personas descuentan del mismo stock a la vez.
+
+De ahí sale la única regla que no se puede romper nunca:
+
+> El valor de un almacén es siempre igual a la suma de sus movimientos valorados.
+
+Todo lo demás del proyecto está para que esa frase siga siendo verdad.
+
+## Stack
+
+- .NET 10, capas separadas (Dominio, Aplicación, Infraestructura, Api)
+- SQL Server 2022 y EF Core 10
+- xUnit; los tests de integración corren sobre LocalDB
+- Más adelante, Blazor: primero escritorio con BlazorWebView, luego web con los mismos componentes
+
+## Cómo levantarlo
+
+Hace falta SQL Server (vale Developer Edition) y LocalDB para los tests. No hace falta Docker.
+
+```
+dotnet tool restore
+dotnet ef database update --project src/Trasiego.Infraestructura --startup-project src/Trasiego.Api
+dotnet run --project src/Trasiego.Api
+```
+
+La cadena de conexión de desarrollo está en `appsettings.Development.json` y apunta a
+`localhost` con autenticación integrada. No la puse en user-secrets como en Camar porque aquí
+no hay ningún secreto que guardar: no lleva usuario ni contraseña. En producción sí saldría
+de user-secrets o de una variable de entorno.
+
+`dotnet test` ejecuta todo. Los tests de dominio no tocan la base de datos y son
+instantáneos; los de integración crean una base de datos suya en LocalDB al empezar y la
+borran al terminar.
+
+## Alcance
+
+Lo que se pretende que haga:
+
+- Artículos, almacenes y movimientos de existencias
+- Valoración por capas FIFO y por precio medio ponderado, conviviendo
+- Ficha de artículo (kardex) con saldo corrido de cantidad y de valor
+- Informes de valoración a una fecha
+- Cierre de periodo
+
+Lo que no va a hacer, para que quede claro desde el principio:
+
+- Multiempresa
+- Contabilidad
+- Compras ni ventas: los movimientos entran directamente, sin documento detrás
+- Lotes ni números de serie
+- Ubicaciones dentro del almacén
+
+## Decisiones tomadas hasta ahora
+
+### Cuatro decimales aunque se enseñen dos
+
+Tres unidades que costaron 10,00 € salen a 3,333333... € cada una. Si ese número se redondea
+a dos decimales antes de seguir operando, la diferencia se va acumulando movimiento a
+movimiento hasta que el valor del almacén deja de cuadrar con la suma de sus movimientos, que
+es justo lo único que no puede pasar.
+
+Los importes se guardan con cuatro decimales y se presentan con dos. El redondeo es comercial
+(`MidpointRounding.AwayFromZero`), no el bancario que trae .NET por defecto: 0,125 son 0,13,
+que es lo que espera cualquiera que mire una factura.
+
+### No se guarda ningún coste unitario
+
+Una capa de existencias guarda cantidad y valor total. El coste unitario se calcula cuando
+hay que enseñarlo y se devuelve como `decimal`, no como `Importe`, precisamente para que no
+apetezca guardarlo ni seguir operando con él.
+
+### El resto se resta, nunca se recalcula
+
+Al consumir parte de una capa se calcula lo que sale y lo que queda es una resta. Pedir la
+otra proporción por separado descuadra: un tercio de 10,00 € es 3,3333, y tres tercios
+calculados así suman 9,9999. Hay un test para cada mitad de esto, porque es el error que más
+caro sale luego y no se ve leyendo el código.
+
+### Una cantidad nunca es negativa
+
+`Cantidad` es una magnitud: lo que entra, lo que sale, lo que queda. El signo lo pone el tipo
+de movimiento, no el número. Restar de más lanza una excepción en vez de devolver un negativo,
+y así una capa no puede quedarse en negativo por una resta mal hecha.
+
+El saldo de un almacén sí puede ser negativo, porque en la vida real se sirve mercancía antes
+de registrar la compra. Pero eso es otro concepto y llevará su propio tipo con signo.
+
+### Fecha contable y momento de registro, separados desde el primer día
+
+Cada movimiento va a llevar dos fechas: el día al que pertenece y el instante en que se
+registró. Son cosas distintas en cuanto alguien mete un movimiento retroactivo, y mezclarlas
+hace imposible explicar por qué un informe de ayer da hoy un número diferente. En Camar
+simplifiqué las zonas horarias y me costó rehacerlo; aquí prefiero pagarlo al principio.
+
+### LocalDB para los tests, no un contenedor
+
+En Camar los tests de integración levantan un Postgres con Testcontainers, porque allí hacía
+falta una `EXCLUDE USING gist` que no existe en ningún proveedor en memoria. Aquí también
+hace falta SQL Server de verdad (índices únicos, precisión de los `decimal`, aislamiento de
+transacciones), pero no hace falta que sea el mismo binario que en producción. LocalDB ya
+está instalado con las herramientas de SQL Server, arranca solo y no obliga a tener Docker
+abierto para pasar los tests.
+
+Cada ejecución crea su propia base de datos y la borra al terminar, así que tampoco toca la
+instancia de desarrollo.
+
+## Por dónde va
+
+Hecho:
+
+- **Fase 0 · Andamiaje.** Solución, capas, conexión a SQL Server, primera migración,
+  `Cantidad` e `Importe` con sus reglas de redondeo, artículos y almacenes.
+
+Lo que viene, en orden:
+
+1. Movimientos sin valorar: entradas, salidas y saldo de cantidades
+2. Valoración FIFO por capas, y la invariante comprobada en los tests
+3. Precio medio ponderado conviviendo con FIFO
+4. Los casos feos: movimientos retroactivos, devoluciones al coste original, regularizaciones,
+   stock negativo
+5. Concurrencia sobre las capas y cierre de periodo
+6. API
+7. Escritorio en Blazor, con el kardex como pantalla principal
+8. Informes de valoración a fecha
+
+Las fases 2 a 5 son el proyecto de verdad; el resto es lo que hace falta para poder verlas.

@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Trasiego.Api/Trasiego.Api.csproj" />
+    <Project Path="src/Trasiego.Aplicacion/Trasiego.Aplicacion.csproj" />
+    <Project Path="src/Trasiego.Dominio/Trasiego.Dominio.csproj" />
+    <Project Path="src/Trasiego.Infraestructura/Trasiego.Infraestructura.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Trasiego.Dominio.Tests/Trasiego.Dominio.Tests.csproj" />
+    <Project Path="tests/Trasiego.Integracion.Tests/Trasiego.Integracion.Tests.csproj" />
+  </Folder>
+</Solution>
