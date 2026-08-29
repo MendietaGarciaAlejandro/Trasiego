@@ -3,8 +3,13 @@ using Trasiego.Dominio.Valores;
 
 namespace Trasiego.Dominio.Valoracion;
 
-/// <summary>Lo que costo una salida y lo que habria costado reproduciendo el historico.</summary>
-public record CosteDeSalida(Guid MovimientoId, Importe Registrado, Importe Reproducido)
+/// <summary>
+/// Lo que costo un movimiento y lo que habria costado reproduciendo el historico. Solo se
+/// mira de los movimientos cuyo coste se deriva: las salidas siempre, y las devoluciones,
+/// que salen de deshacer los consumos de la salida original. Lo que costo una entrada lo
+/// dice una factura y no se recalcula.
+/// </summary>
+public record CosteReproducido(Guid MovimientoId, Importe Registrado, Importe Reproducido)
 {
     public bool Cuadra => Registrado == Reproducido;
 
@@ -12,15 +17,15 @@ public record CosteDeSalida(Guid MovimientoId, Importe Registrado, Importe Repro
 }
 
 public record Reproduccion(
-    IReadOnlyList<CosteDeSalida> Salidas,
+    IReadOnlyList<CosteReproducido> Costes,
     Saldo Cantidad,
     Importe Valor,
     IReadOnlyList<CapaDeExistencias> CapasNuevas,
     IReadOnlyList<ConsumoDeCapa> Consumos,
     IReadOnlyList<Descubierto> Descubiertos)
 {
-    public IReadOnlyList<CosteDeSalida> Descuadradas =>
-        [.. Salidas.Where(salida => !salida.Cuadra)];
+    public IReadOnlyList<CosteReproducido> Descuadradas =>
+        [.. Costes.Where(coste => !coste.Cuadra)];
 }
 
 /// <summary>
@@ -53,7 +58,7 @@ public static class Recalculo
         var descubiertos = new List<Descubierto>();
         var consumos = new List<ConsumoDeCapa>();
         var consumosPorSalida = new Dictionary<Guid, List<ConsumoDeCapa>>();
-        var salidas = new List<CosteDeSalida>();
+        var costes = new List<CosteReproducido>();
 
         var cantidad = Saldo.De(
             apertura.Aggregate(Cantidad.Cero, (suma, capa) => suma + capa.CantidadRestante));
@@ -63,23 +68,29 @@ public static class Recalculo
         {
             if (movimiento.Tipo is TipoDeMovimiento.Entrada)
             {
-                Entra(movimiento);
+                var coste = Entra(movimiento);
+
+                // Una devolucion vale lo que valia lo que vuelve, y eso se deriva de los
+                // consumos de la salida original: si el historico se recoloca, cambia.
+                if (movimiento.Motivo is MotivoDeMovimiento.Devolucion)
+                    costes.Add(new CosteReproducido(movimiento.Id, movimiento.Coste, coste));
+
                 cantidad = Saldo.De(cantidad.Valor + movimiento.Cantidad.Valor);
-                valor += movimiento.Coste;
+                valor += coste;
             }
             else
             {
                 var coste = Sale(movimiento);
-                salidas.Add(new CosteDeSalida(movimiento.Id, movimiento.Coste, coste));
+                costes.Add(new CosteReproducido(movimiento.Id, movimiento.Coste, coste));
 
                 cantidad = Saldo.De(cantidad.Valor - movimiento.Cantidad.Valor);
                 valor -= coste;
             }
         }
 
-        return new Reproduccion(salidas, cantidad, valor, capasNuevas, consumos, descubiertos);
+        return new Reproduccion(costes, cantidad, valor, capasNuevas, consumos, descubiertos);
 
-        void Entra(Movimiento entrada)
+        Importe Entra(Movimiento entrada)
         {
             var coste = entrada.Motivo is MotivoDeMovimiento.Devolucion
                 ? Devuelve(entrada)
@@ -87,10 +98,11 @@ public static class Recalculo
 
             // Una devolucion en FIFO ya ha repuesto sus capas; lo demas pasa por el recorrido
             // normal de tapar descubiertos y abrir o engordar capa.
-            if (entrada.Motivo is MotivoDeMovimiento.Devolucion
-                && metodo is MetodoDeValoracion.Fifo) return;
+            if (entrada.Motivo is not MotivoDeMovimiento.Devolucion
+                || metodo is not MetodoDeValoracion.Fifo)
+                Coloca(entrada, entrada.Cantidad, coste);
 
-            Coloca(entrada, entrada.Cantidad, coste);
+            return coste;
         }
 
         Importe Devuelve(Movimiento devolucion)

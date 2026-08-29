@@ -164,6 +164,38 @@ public class AplicarRecalculoTests(BaseDeDatosDePruebas baseDeDatos)
     }
 
     [Fact]
+    public async Task Una_devolucion_tambien_se_recalcula()
+    {
+        // El coste de una devolucion no lo teclea nadie: sale de deshacer los consumos de la
+        // salida original. Si el historico se recoloca, ese coste cambia igual que el de la
+        // salida, y hasta ahora se quedaba con el viejo.
+        await using var contexto = baseDeDatos.Contexto();
+        var (articulo, almacen) = await Escenario.Catalogo(contexto);
+        var servicio = Escenario.Servicio(contexto);
+
+        await servicio.RegistrarEntrada(
+            articulo.Id, almacen.Id, Cantidad.De(10), Importe.De(80m), Escenario.Hoy.AddDays(-5));
+        var salida = await servicio.RegistrarSalida(
+            articulo.Id, almacen.Id, Cantidad.De(4), Escenario.Hoy.AddDays(-4));
+        var devolucion = await servicio.DevolverSalida(
+            salida.Id, Cantidad.De(4), Escenario.Hoy.AddDays(-3));
+
+        Assert.Equal(Importe.De(32m), devolucion.Coste);
+
+        await servicio.RegistrarEntrada(
+            articulo.Id, almacen.Id, Cantidad.De(10), Importe.De(10m), Escenario.Hoy.AddDays(-8));
+
+        await Escenario.Recalculo(contexto).Aplicar(articulo.Id, almacen.Id);
+
+        var vuelta = await contexto.Movimientos.SingleAsync(m => m.Id == devolucion.Id);
+        Assert.Equal(Importe.De(4m), vuelta.Coste);
+
+        Assert.Equal(
+            await new RepositorioDeMovimientos(contexto).CosteNeto(articulo.Id, almacen.Id),
+            await new RepositorioDeValoracion(contexto).ValorDeLasExistencias(articulo.Id, almacen.Id));
+    }
+
+    [Fact]
     public async Task Aplicar_no_toca_nada_por_debajo_del_cierre()
     {
         await using var contexto = baseDeDatos.Contexto();

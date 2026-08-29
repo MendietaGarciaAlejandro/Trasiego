@@ -57,13 +57,20 @@ public class Movimiento(
         string.IsNullOrWhiteSpace(concepto) ? null : Comprobar.ComoMucho(concepto.Trim(), 200);
 
     /// <summary>
-    /// Cambia lo que costo una salida. Solo lo usa el recalculo, y solo por encima del ultimo
-    /// cierre: en el uso normal el coste de una salida se decide al registrarla y no se toca.
+    /// Cambia lo que costo un movimiento. Solo lo usa el recalculo y solo por encima del
+    /// ultimo cierre.
     /// </summary>
+    /// <remarks>
+    /// Se puede con lo que tiene el coste derivado: las salidas, las devoluciones y los
+    /// traspasos, que valen lo que valia lo que se movio. Lo que costo una entrada normal lo
+    /// dice una factura, y eso no lo recalcula nadie.
+    /// </remarks>
     public void CorregirCoste(Importe coste)
     {
-        if (Tipo is not TipoDeMovimiento.Salida)
-            throw new ReglaDeNegocio("Solo se corrige el coste de una salida.");
+        if (Tipo is TipoDeMovimiento.Entrada
+            && Motivo is not (MotivoDeMovimiento.Devolucion or MotivoDeMovimiento.Traspaso))
+            throw new ReglaDeNegocio(
+                "El coste de una entrada lo pone quien la registra, no se recalcula.");
 
         Coste = coste < Importe.Cero
             ? throw new ReglaDeNegocio("El coste de un movimiento no puede ser negativo.")

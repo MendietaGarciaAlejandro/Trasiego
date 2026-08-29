@@ -66,6 +66,7 @@ public interface IRepositorioDeMovimientos
     /// </summary>
     Task<IReadOnlyList<Movimiento>> TraspasosAlimentadosPor(
         IEnumerable<Guid> salidaIds,
+        bool conSeguimiento = false,
         CancellationToken cancelacion = default);
 
     /// <summary>Los articulos de un almacen que tienen algun movimiento que llego tarde.</summary>

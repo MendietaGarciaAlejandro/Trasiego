@@ -164,9 +164,7 @@ public record DescuadreVisto(
     decimal CantidadDeclarada,
     decimal CantidadAhora,
     decimal ValorDeclarado,
-    decimal ValorAhora)
-{
-}
+    decimal ValorAhora);
 
 public record LineaDeValoracionVista(
     Guid ArticuloId,
@@ -180,7 +178,7 @@ public record ValoracionVista(
     decimal Total,
     IReadOnlyList<LineaDeValoracionVista> Lineas);
 
-public record SalidaDescuadrada(
+public record CosteDescuadrado(
     Guid MovimientoId,
     decimal Registrado,
     decimal Reproducido,
@@ -189,6 +187,5 @@ public record SalidaDescuadrada(
 public record ReproduccionVista(
     decimal Cantidad,
     decimal Valor,
-    IReadOnlyList<SalidaDescuadrada> Descuadradas)
-{
-}
+    IReadOnlyList<CosteDescuadrado> Descuadrados,
+    IReadOnlyList<Guid> OtrosAlmacenes);

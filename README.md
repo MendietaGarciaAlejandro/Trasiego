@@ -47,7 +47,7 @@ Para el escritorio, con la Api levantada:
 dotnet run --project src/Trasiego.Escritorio
 ```
 
-`dotnet test` ejecuta todo (unos 137 tests). Los de la API levantan la aplicación entera con `WebApplicationFactory` contra la misma base de datos de pruebas. Los tests de dominio no tocan la base de datos y son
+`dotnet test` ejecuta todo (unos 139 tests). Los de la API levantan la aplicación entera con `WebApplicationFactory` contra la misma base de datos de pruebas. Los tests de dominio no tocan la base de datos y son
 instantáneos; los de integración crean una base de datos suya en LocalDB al empezar y la
 borran al terminar.
 
@@ -261,6 +261,22 @@ poder verlo antes de fiarse de un informe.
 Recalcular de verdad es lo siguiente, y ahora ya se puede: el cierre da el punto desde el que
 empezar y el límite de hasta dónde se puede tocar.
 
+### El recálculo arrastra a los almacenes de al lado
+
+Si al rehacer un almacén cambia el coste de una salida que se había traspasado, el destino se
+quedaría diciendo otra cosa. Así que se le pone al día la entrada y se rehace también, y si
+ese destino traspasó a su vez, se sigue tirando del hilo hasta que deja de moverse nada.
+
+No hace falta ordenar los almacenes ni preocuparse por los ciclos, aunque A traspase a B y B
+a A: **un traspaso siempre se alimenta de una salida anterior**, así que los costes van hacia
+delante en el tiempo y la cadena se acaba sola. Hay un tope de vueltas de todas formas, no por
+diseño sino por si acaso.
+
+Esto destapó otro hueco: el recálculo solo corregía el coste de las salidas, pero el de una
+devolución también es derivado — sale de deshacer los consumos de la salida original — y con
+movimientos retroactivos también cambia. Ahora se corrige todo lo que se deriva. Lo que costó
+una entrada normal lo dice una factura, y eso no lo recalcula nadie.
+
 ### Reproducir el histórico para saber cuánto se aparta
 
 `Recalculo.Reproducir` vuelve a valorar un histórico desde el último cierre, en el orden en
@@ -390,11 +406,9 @@ entra en el de destino.
 Las dos mitades se guardan atadas — la entrada apunta a la salida — y se confirman de una vez,
 para que no pueda quedar mercancía que ha salido de un almacén y no ha llegado a ninguno.
 
-Eso trajo un problema que no esperaba. Recalcular un almacén puede cambiar el coste de una
-salida; si esa salida alimentó un traspaso, el otro almacén se quedaría diciendo una cosa
-distinta. Propagar el recálculo de un almacén a otro es un problema mayor del que quería meter
-aquí, así que **`Aplicar` se planta y lo dice** en vez de corromper el destino en silencio.
-`Comparar` sigue funcionando, porque solo mira.
+Eso trajo un problema: recalcular un almacén puede cambiar el coste de una salida, y si esa
+salida alimentó un traspaso, el otro almacén se quedaría diciendo una cosa distinta. El
+recálculo lo arrastra (ver más abajo).
 
 ### Dos roles, y salen del dominio
 

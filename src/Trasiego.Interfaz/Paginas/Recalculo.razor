@@ -71,7 +71,16 @@ else
 {
     <h2 class="titulo">@titulo</h2>
 
-    @if (reproduccion.Descuadradas.Count == 0)
+    @if (reproduccion.OtrosAlmacenes.Count > 0)
+    {
+        <p class="bien">
+            Lo corregido aqui habia salido hacia otro almacen en un traspaso, asi que se ha
+            rehecho tambien: @reproduccion.OtrosAlmacenes.Count
+            @(reproduccion.OtrosAlmacenes.Count == 1 ? "almacen mas" : "almacenes mas").
+        </p>
+    }
+
+    @if (reproduccion.Descuadrados.Count == 0)
     {
         <p class="bien">
             Reproducido: quedan @Numero(reproduccion.Cantidad) por
@@ -83,14 +92,14 @@ else
         <table>
             <thead>
                 <tr>
-                    <th>Salida</th>
+                    <th>Movimiento</th>
                     <th class="numero">Se valoro en</th>
                     <th class="numero">Habria costado</th>
                     <th class="numero">Diferencia</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var salida in reproduccion.Descuadradas)
+                @foreach (var salida in reproduccion.Descuadrados)
                 {
                     <tr>
                         <td>@salida.MovimientoId.ToString()[..8]</td>

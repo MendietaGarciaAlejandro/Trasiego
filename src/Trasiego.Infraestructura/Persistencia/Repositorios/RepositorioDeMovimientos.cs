@@ -107,14 +107,20 @@ public class RepositorioDeMovimientos(ContextoDeTrasiego contexto) : IRepositori
 
     public async Task<IReadOnlyList<Movimiento>> TraspasosAlimentadosPor(
         IEnumerable<Guid> salidaIds,
-        CancellationToken cancelacion = default) =>
-        await contexto.Movimientos
-            .AsNoTracking()
+        bool conSeguimiento = false,
+        CancellationToken cancelacion = default)
+    {
+        // Con seguimiento solo cuando hay que corregirles el coste; para mirar, sin el.
+        var consulta = contexto.Movimientos
             .Where(m => m.Motivo == MotivoDeMovimiento.Traspaso
                      && m.Tipo == TipoDeMovimiento.Entrada
                      && m.MovimientoOrigenId != null
-                     && salidaIds.Contains(m.MovimientoOrigenId.Value))
-            .ToListAsync(cancelacion);
+                     && salidaIds.Contains(m.MovimientoOrigenId.Value));
+
+        if (!conSeguimiento) consulta = consulta.AsNoTracking();
+
+        return await consulta.ToListAsync(cancelacion);
+    }
 
     public async Task<IReadOnlyList<Guid>> ArticulosConRetroactivos(
         Guid almacenId,

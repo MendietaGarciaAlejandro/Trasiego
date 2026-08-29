@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Trasiego.Dominio.Almacenes;
 using Trasiego.Dominio.Comun;
 using Trasiego.Dominio.Movimientos;
@@ -132,31 +133,67 @@ public class TraspasosTests(BaseDeDatosDePruebas baseDeDatos)
     }
 
     [Fact]
-    public async Task El_recalculo_se_planta_si_tuviera_que_cambiar_una_salida_ya_traspasada()
+    public async Task El_recalculo_arrastra_al_almacen_al_que_se_habia_traspasado()
     {
         await using var contexto = baseDeDatos.Contexto();
         var (articulo, origen) = await Escenario.Catalogo(contexto);
         var destino = await OtroAlmacen(contexto);
         var servicio = Escenario.Servicio(contexto);
 
+        // Entra caro, se traspasan cuatro a 8 € la unidad.
         await servicio.RegistrarEntrada(
             articulo.Id, origen.Id, Cantidad.De(10), Importe.De(80m), Escenario.Hoy.AddDays(-5));
-        await servicio.Traspasar(
+        var traspaso = await servicio.Traspasar(
             articulo.Id, origen.Id, destino.Id, Cantidad.De(4), Escenario.Hoy.AddDays(-4));
 
-        // Y despues aparece un albaran anterior mucho mas barato.
+        Assert.Equal(Importe.De(32m), traspaso.Entrada.Coste);
+
+        // Y despues aparece un albaran anterior a 1 € la unidad.
         await servicio.RegistrarEntrada(
             articulo.Id, origen.Id, Cantidad.De(10), Importe.De(10m), Escenario.Hoy.AddDays(-8));
 
-        var recalculo = Escenario.Recalculo(contexto);
+        var resultado = await Escenario.Recalculo(contexto).Aplicar(articulo.Id, origen.Id);
 
-        // Comparar si vale: solo mira.
-        Assert.NotEmpty((await recalculo.Comparar(articulo.Id, origen.Id)).Descuadradas);
+        // Lo que salio del origen ahora cuesta 4 €, y eso es lo que tiene que valer en el
+        // destino: mover genero de sitio no cambia lo que vale, tampoco al recalcular.
+        Assert.Equal([destino.Id], resultado.OtrosAlmacenes);
 
-        var fallo = await Assert.ThrowsAsync<Conflicto>(() =>
-            recalculo.Aplicar(articulo.Id, origen.Id));
+        var enElDestino = await contexto.Movimientos.SingleAsync(m => m.Id == traspaso.Entrada.Id);
+        Assert.Equal(Importe.De(4m), enElDestino.Coste);
 
-        Assert.Contains("alimento un traspaso a otro almacen", fallo.Message);
+        var valoracion = new RepositorioDeValoracion(contexto);
+        Assert.Equal(
+            Importe.De(4m),
+            await valoracion.ValorDeLasExistencias(articulo.Id, destino.Id));
+    }
+
+    [Fact]
+    public async Task La_invariante_cuadra_en_los_dos_almacenes_despues_de_arrastrar()
+    {
+        await using var contexto = baseDeDatos.Contexto();
+        var (articulo, origen) = await Escenario.Catalogo(contexto);
+        var destino = await OtroAlmacen(contexto);
+        var servicio = Escenario.Servicio(contexto);
+
+        // Numeros que no caen redondos, para que el redondeo tenga donde acumularse.
+        await servicio.RegistrarEntrada(
+            articulo.Id, origen.Id, Cantidad.De(7), Importe.De(23.33m), Escenario.Hoy.AddDays(-5));
+        await servicio.Traspasar(
+            articulo.Id, origen.Id, destino.Id, Cantidad.De(3), Escenario.Hoy.AddDays(-4));
+        await servicio.RegistrarSalida(
+            articulo.Id, destino.Id, Cantidad.De(1), Escenario.Hoy.AddDays(-3));
+        await servicio.RegistrarEntrada(
+            articulo.Id, origen.Id, Cantidad.De(4), Importe.De(10m), Escenario.Hoy.AddDays(-9));
+
+        await Escenario.Recalculo(contexto).Aplicar(articulo.Id, origen.Id);
+
+        var movimientos = new RepositorioDeMovimientos(contexto);
+        var valoracion = new RepositorioDeValoracion(contexto);
+
+        foreach (var almacen in new[] { origen.Id, destino.Id })
+            Assert.Equal(
+                await movimientos.CosteNeto(articulo.Id, almacen),
+                await valoracion.ValorDeLasExistencias(articulo.Id, almacen));
     }
 
     private static async Task<Almacen> OtroAlmacen(ContextoDeTrasiego contexto)
