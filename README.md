@@ -164,6 +164,31 @@ Una entrada pide lo que costó entera, no lo que cuesta cada unidad. Si se pidie
 unitario habría que multiplicarlo por la cantidad, y el redondeo de esa multiplicación ya no
 cuadraría con la factura que hay encima de la mesa.
 
+### Lo devuelto vuelve al coste al que salió
+
+Para esto estaba la tabla de consumos. Una devolución no entra al precio de hoy ni a la media
+del momento: se mira de qué capas salió aquella salida y a qué coste, y eso es lo que vuelve.
+Diez unidades que costaron 1 € vuelven valiendo 1 €, aunque entre medias haya entrado
+material a 8 €.
+
+Dónde acaba lo devuelto sí depende del criterio. En FIFO cada trozo repone la capa de la que
+salió, que es lo que mantiene su coste separado del de las demás. A precio medio no hay capas
+que distinguir: entra en la que esté abierta y rehace la media, que es lo que se espera de una
+media. El coste es el original en los dos casos; lo que cambia es dónde cae.
+
+Devolver a plazos tampoco pierde céntimos: cada consumo lleva cuánto se ha devuelto ya, y el
+coste se calcula sobre lo que queda por devolver restando, igual que en las capas.
+
+### Un recuento por encima entra al precio de lo que ya había
+
+Si el inventario dice que hay dos unidades más de las que el sistema creía, esas dos valen lo
+mismo que las demás: la regularización entra al precio de las existencias y el valor unitario
+del almacén no se mueve. Es el único sitio del proyecto donde se usa un coste unitario para
+calcular algo, y va comentado como tal.
+
+Si no había existencias no hay precio del que tirar, y en vez de inventarse uno la operación
+se rechaza pidiendo que se registre como una entrada normal con su coste.
+
 ### De momento no se deja bajar de cero
 
 Una salida que dejaría el saldo en negativo se rechaza, y el aviso dice cuánto queda. Es lo

@@ -7,6 +7,8 @@ public interface IRepositorioDeMovimientos
 {
     void Agregar(Movimiento movimiento);
 
+    Task<Movimiento?> PorId(Guid id, CancellationToken cancelacion = default);
+
     /// <summary>
     /// Lo que hay de un articulo en un almacen. Con <paramref name="aFecha"/> se pregunta
     /// por lo que habia al cierre de ese dia contable.

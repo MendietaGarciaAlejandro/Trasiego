@@ -11,7 +11,9 @@ public class Movimiento(
     Importe coste,
     DateOnly fechaContable,
     DateTimeOffset momentoDeRegistro,
-    string? concepto = null)
+    string? concepto = null,
+    MotivoDeMovimiento motivo = MotivoDeMovimiento.Ordinario,
+    Guid? movimientoOrigenId = null)
 {
     public Guid Id { get; private set; } = Guid.CreateVersion7();
 
@@ -38,6 +40,12 @@ public class Movimiento(
     // Cuando se tecleo. Solo sirve para saber quien vio que cosa y cuando, y para poder
     // explicar por que un informe de ayer da hoy un numero distinto.
     public DateTimeOffset MomentoDeRegistro { get; private set; } = momentoDeRegistro;
+
+    public MotivoDeMovimiento Motivo { get; private set; } = motivo;
+
+    // Solo lo llevan las devoluciones: la salida de la que vuelve el material. Es lo que
+    // permite devolver al coste al que salio y no al de hoy.
+    public Guid? MovimientoOrigenId { get; private set; } = movimientoOrigenId;
 
     public string? Concepto { get; private set; } =
         string.IsNullOrWhiteSpace(concepto) ? null : Comprobar.ComoMucho(concepto.Trim(), 200);

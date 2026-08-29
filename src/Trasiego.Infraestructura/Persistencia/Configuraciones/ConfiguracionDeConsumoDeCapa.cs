@@ -18,6 +18,11 @@ public class ConfiguracionDeConsumoDeCapa : IEntityTypeConfiguration<ConsumoDeCa
         consumo.Property(c => c.Coste)
             .HasConversion<ConvertidorDeImporte>().HasPrecision(19, Importe.Decimales);
 
+        consumo.Property(c => c.CantidadDevuelta)
+            .HasConversion<ConvertidorDeCantidad>().HasPrecision(18, Cantidad.Decimales);
+        consumo.Property(c => c.CosteDevuelto)
+            .HasConversion<ConvertidorDeImporte>().HasPrecision(19, Importe.Decimales);
+
         consumo.HasIndex(c => c.MovimientoId);
         consumo.HasIndex(c => c.CapaId);
     }

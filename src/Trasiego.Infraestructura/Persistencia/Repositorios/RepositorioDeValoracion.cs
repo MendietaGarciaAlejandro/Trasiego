@@ -35,6 +35,21 @@ public class RepositorioDeValoracion(ContextoDeTrasiego contexto) : IRepositorio
             .ThenBy(c => c.Id)
             .FirstOrDefaultAsync(cancelacion);
 
+    public async Task<IReadOnlyList<CapaDeExistencias>> CapasPorId(
+        IEnumerable<Guid> ids,
+        CancellationToken cancelacion = default) =>
+        await contexto.Capas.Where(c => ids.Contains(c.Id)).ToListAsync(cancelacion);
+
+    public async Task<IReadOnlyList<ConsumoDeCapa>> ConsumosDe(
+        Guid movimientoId,
+        CancellationToken cancelacion = default) =>
+        // Los ids son version 7, que llevan la hora delante: ordenar por id es ordenar por
+        // el momento en que se creo cada consumo, que es el orden en que se vaciaron.
+        await contexto.Consumos
+            .Where(c => c.MovimientoId == movimientoId)
+            .OrderBy(c => c.Id)
+            .ToListAsync(cancelacion);
+
     public async Task<Importe> ValorDeLasExistencias(
         Guid articuloId,
         Guid almacenId,

@@ -69,6 +69,19 @@ public class CapaDeExistencias
         CosteRestante += coste;
     }
 
+    /// <summary>
+    /// Devuelve a la capa algo que habia salido de ella, al coste al que salio.
+    /// </summary>
+    /// <remarks>
+    /// A diferencia de <see cref="Absorber"/>, esto no toca la cantidad ni el coste
+    /// iniciales: por la capa no ha pasado nada nuevo, vuelve lo que ya habia contado.
+    /// </remarks>
+    public void Reponer(Cantidad cantidad, Importe coste)
+    {
+        CantidadRestante += cantidad;
+        CosteRestante += coste;
+    }
+
     /// <summary>Saca cantidad de la capa y devuelve lo que vale lo que sale.</summary>
     public Importe Consumir(Cantidad cuanto)
     {

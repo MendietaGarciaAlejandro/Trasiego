@@ -24,6 +24,15 @@ public interface IRepositorioDeValoracion
         Guid almacenId,
         CancellationToken cancelacion = default);
 
+    Task<IReadOnlyList<CapaDeExistencias>> CapasPorId(
+        IEnumerable<Guid> ids,
+        CancellationToken cancelacion = default);
+
+    /// <summary>De que capas salio una salida, en el mismo orden en que se consumieron.</summary>
+    Task<IReadOnlyList<ConsumoDeCapa>> ConsumosDe(
+        Guid movimientoId,
+        CancellationToken cancelacion = default);
+
     /// <summary>Lo que vale ahora mismo lo que queda en el almacen.</summary>
     Task<Importe> ValorDeLasExistencias(
         Guid articuloId,

@@ -9,6 +9,9 @@ public class RepositorioDeMovimientos(ContextoDeTrasiego contexto) : IRepositori
 {
     public void Agregar(Movimiento movimiento) => contexto.Movimientos.Add(movimiento);
 
+    public Task<Movimiento?> PorId(Guid id, CancellationToken cancelacion = default) =>
+        contexto.Movimientos.FirstOrDefaultAsync(m => m.Id == id, cancelacion);
+
     public async Task<Cantidad> Saldo(
         Guid articuloId,
         Guid almacenId,

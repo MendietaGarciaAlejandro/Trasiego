@@ -16,6 +16,7 @@ public class ConfiguracionDeMovimiento : IEntityTypeConfiguration<Movimiento>
         movimiento.HasKey(m => m.Id);
 
         movimiento.Property(m => m.Tipo).HasConversion<int>();
+        movimiento.Property(m => m.Motivo).HasConversion<int>();
         movimiento.Property(m => m.Concepto).HasMaxLength(200);
 
         movimiento.Property(m => m.Cantidad)
