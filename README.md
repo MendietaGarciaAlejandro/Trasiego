@@ -18,6 +18,7 @@ Todo lo demás del proyecto está para que esa frase siga siendo verdad.
 
 - .NET 10, capas separadas (Dominio, Aplicación, Infraestructura, Api)
 - SQL Server 2022 y EF Core 10
+- JWT para identificarse y BCrypt para las contraseñas
 - xUnit; los tests de integración corren sobre LocalDB
 - ASP.NET Core con controllers, y Scalar para probarla a mano (`/scalar` en desarrollo)
 - Las pantallas en Blazor, en una biblioteca aparte, con dos hosts: WPF con `BlazorWebView`
@@ -46,7 +47,7 @@ Para el escritorio, con la Api levantada:
 dotnet run --project src/Trasiego.Escritorio
 ```
 
-`dotnet test` ejecuta todo (unos 129 tests). Los de la API levantan la aplicación entera con `WebApplicationFactory` contra la misma base de datos de pruebas. Los tests de dominio no tocan la base de datos y son
+`dotnet test` ejecuta todo (unos 137 tests). Los de la API levantan la aplicación entera con `WebApplicationFactory` contra la misma base de datos de pruebas. Los tests de dominio no tocan la base de datos y son
 instantáneos; los de integración crean una base de datos suya en LocalDB al empezar y la
 borran al terminar.
 
@@ -394,6 +395,25 @@ salida; si esa salida alimentó un traspaso, el otro almacén se quedaría dicie
 distinta. Propagar el recálculo de un almacén a otro es un problema mayor del que quería meter
 aquí, así que **`Aplicar` se planta y lo dice** en vez de corromper el destino en silencio.
 `Comparar` sigue funcionando, porque solo mira.
+
+### Dos roles, y salen del dominio
+
+Un **operario** mueve mercancía y consulta: es el día a día del almacén. Un **responsable**
+además cuadra inventarios, cierra periodos, recalcula y toca el catálogo.
+
+El corte no es arbitrario: son las operaciones de las que no se vuelve, o que cambian lo que
+ya estaba contado. Un recuento mueve existencias sin ningún papel detrás, y un cierre no tiene
+vuelta atrás.
+
+Quien manda es la Api, que responde 403. La interfaz además no le enseña al operario los
+botones que no van a funcionar, pero eso es cortesía, no seguridad.
+
+Entrar con un correo que no existe da exactamente el mismo aviso que entrar con la contraseña
+cambiada. Si fueran distintos, probando correos se sabría cuáles están dados de alta.
+
+El token se queda en memoria y no se guarda en ningún sitio, así que cerrar la aplicación es
+salir. Guardarlo sería más cómodo, pero un token en el almacenamiento del navegador se lo
+lleva cualquiera que consiga meter un script en la página.
 
 ### El saldo lleva signo y la cantidad no
 

@@ -1,10 +1,13 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Trasiego.Dominio.Acceso;
 using Trasiego.Contratos;
 using Trasiego.Aplicacion.Catalogo;
 
 namespace Trasiego.Api.Controladores;
 
 [ApiController]
+[Authorize]
 [Route("api/articulos")]
 public class ArticulosController(ServicioDeArticulos articulos) : ControllerBase
 {
@@ -19,6 +22,7 @@ public class ArticulosController(ServicioDeArticulos articulos) : ControllerBase
         ArticuloVisto.De(await articulos.PorId(id, cancelacion));
 
     [HttpPost]
+    [Authorize(Roles = Roles.Responsable)]
     public async Task<ActionResult<ArticuloVisto>> Alta(
         AltaDeArticulo peticion,
         CancellationToken cancelacion)
@@ -31,6 +35,7 @@ public class ArticulosController(ServicioDeArticulos articulos) : ControllerBase
     }
 
     [HttpPut("{id:guid}/metodo")]
+    [Authorize(Roles = Roles.Responsable)]
     public async Task<NoContentResult> CambiarMetodo(
         Guid id,
         CambioDeMetodo peticion,
@@ -41,6 +46,7 @@ public class ArticulosController(ServicioDeArticulos articulos) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = Roles.Responsable)]
     public async Task<NoContentResult> DarDeBaja(Guid id, CancellationToken cancelacion)
     {
         await articulos.DarDeBaja(id, cancelacion);

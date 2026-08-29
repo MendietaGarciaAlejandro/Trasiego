@@ -21,6 +21,10 @@ public sealed class ApiDePruebas(string cadenaDeConexion) : WebApplicationFactor
                 new Dictionary<string, string?>
                 {
                     ["ConnectionStrings:Trasiego"] = cadenaDeConexion,
+
+                    // La clave de firma se pone aqui para que las pruebas no dependan de los
+                    // secretos que tenga cada uno en su maquina.
+                    ["Jwt:Clave"] = "clave-de-pruebas-lo-bastante-larga-para-hmac-sha256",
                 }));
 
         return base.CreateHost(constructor);

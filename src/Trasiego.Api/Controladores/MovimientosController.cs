@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Trasiego.Dominio.Acceso;
 using Trasiego.Contratos;
 using Trasiego.Aplicacion.Movimientos;
 using Trasiego.Dominio.Valores;
@@ -6,6 +8,7 @@ using Trasiego.Dominio.Valores;
 namespace Trasiego.Api.Controladores;
 
 [ApiController]
+[Authorize]
 [Route("api/movimientos")]
 public class MovimientosController(ServicioDeMovimientos movimientos) : ControllerBase
 {
@@ -105,6 +108,7 @@ public class MovimientosController(ServicioDeMovimientos movimientos) : Controll
     /// nada.
     /// </summary>
     [HttpPost("recuentos")]
+    [Authorize(Roles = Roles.Responsable)]
     public async Task<ActionResult<MovimientoVisto>> Recuento(
         RecuentoPedido peticion,
         CancellationToken cancelacion)

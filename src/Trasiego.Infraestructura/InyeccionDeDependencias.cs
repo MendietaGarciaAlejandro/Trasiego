@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Trasiego.Aplicacion.Abstracciones;
 using Trasiego.Infraestructura.Persistencia;
 using Trasiego.Infraestructura.Persistencia.Repositorios;
+using Trasiego.Infraestructura.Seguridad;
 
 namespace Trasiego.Infraestructura;
 
@@ -25,7 +26,11 @@ public static class InyeccionDeDependencias
         servicios.AddScoped<IRepositorioDeMovimientos, RepositorioDeMovimientos>();
         servicios.AddScoped<IRepositorioDeValoracion, RepositorioDeValoracion>();
         servicios.AddScoped<IRepositorioDeCierres, RepositorioDeCierres>();
+        servicios.AddScoped<IRepositorioDeUsuarios, RepositorioDeUsuarios>();
         servicios.AddScoped<IUnidadDeTrabajo, UnidadDeTrabajo>();
+
+        servicios.AddSingleton<IHuellaDeContrasenas, HuellaBCrypt>();
+        servicios.AddScoped<IGeneradorDeTokens, GeneradorDeTokens>();
 
         return servicios;
     }

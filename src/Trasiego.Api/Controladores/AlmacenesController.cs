@@ -1,10 +1,13 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Trasiego.Dominio.Acceso;
 using Trasiego.Contratos;
 using Trasiego.Aplicacion.Almacenes;
 
 namespace Trasiego.Api.Controladores;
 
 [ApiController]
+[Authorize]
 [Route("api/almacenes")]
 public class AlmacenesController(ServicioDeAlmacenes almacenes) : ControllerBase
 {
@@ -19,6 +22,7 @@ public class AlmacenesController(ServicioDeAlmacenes almacenes) : ControllerBase
         AlmacenVisto.De(await almacenes.PorId(id, cancelacion));
 
     [HttpPost]
+    [Authorize(Roles = Roles.Responsable)]
     public async Task<ActionResult<AlmacenVisto>> Alta(
         AltaDeAlmacen peticion,
         CancellationToken cancelacion)
@@ -30,6 +34,7 @@ public class AlmacenesController(ServicioDeAlmacenes almacenes) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = Roles.Responsable)]
     public async Task<NoContentResult> DarDeBaja(Guid id, CancellationToken cancelacion)
     {
         await almacenes.DarDeBaja(id, cancelacion);

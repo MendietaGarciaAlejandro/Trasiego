@@ -1,10 +1,28 @@
-<Router AppAssembly="@GetType().Assembly">
-    <Found Context="ruta">
-        <RouteView RouteData="@ruta" DefaultLayout="@typeof(Marco)" />
-    </Found>
-    <NotFound>
-        <LayoutView Layout="@typeof(Marco)">
-            <p class="vacio">Esa pantalla no existe.</p>
-        </LayoutView>
-    </NotFound>
-</Router>
+@implements IDisposable
+@inject ClienteDeTrasiego trasiego
+
+@if (!trasiego.HaEntrado)
+{
+    <Acceso />
+}
+else
+{
+    <Router AppAssembly="@GetType().Assembly">
+        <Found Context="ruta">
+            <RouteView RouteData="@ruta" DefaultLayout="@typeof(Marco)" />
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(Marco)">
+                <p class="vacio">Esa pantalla no existe.</p>
+            </LayoutView>
+        </NotFound>
+    </Router>
+}
+
+@code {
+    protected override void OnInitialized() => trasiego.SesionCambiada += Repintar;
+
+    public void Dispose() => trasiego.SesionCambiada -= Repintar;
+
+    private void Repintar() => InvokeAsync(StateHasChanged);
+}

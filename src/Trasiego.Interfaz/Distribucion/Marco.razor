@@ -1,4 +1,6 @@
 @inherits LayoutComponentBase
+@inject ClienteDeTrasiego trasiego
+@inject NavigationManager navegacion
 
 <div class="marco">
     <nav class="lateral">
@@ -8,15 +10,33 @@
         <NavLink href="articulos">Articulos</NavLink>
         <NavLink href="almacenes">Almacenes</NavLink>
 
-        <div class="separador">Cierre</div>
-        <NavLink href="valoracion">Valoracion</NavLink>
-        <NavLink href="cierres">Cierres</NavLink>
-        <NavLink href="recalculo">Recalculo</NavLink>
+        @* Lo que un operario no puede hacer tampoco se le enseña. Quien manda de verdad es
+           la Api, que responde 403; esto solo evita ofrecer botones que no van a funcionar. *@
+        @if (trasiego.EsResponsable)
+        {
+            <div class="separador">Cierre</div>
+            <NavLink href="valoracion">Valoracion</NavLink>
+            <NavLink href="cierres">Cierres</NavLink>
+            <NavLink href="recalculo">Recalculo</NavLink>
+        }
 
-        <div class="pie">Inventario con valoracion</div>
+        <div class="pie">
+            <div class="quien">@trasiego.Nombre</div>
+            <button class="salir" @onclick="Salir">Salir</button>
+        </div>
     </nav>
 
     <main class="contenido">
         @Body
     </main>
 </div>
+
+@code {
+    // Vuelve al kardex antes de cerrar, para que al entrar otra vez no se caiga en una
+    // pantalla que quiza el siguiente no pueda ver.
+    private void Salir()
+    {
+        navegacion.NavigateTo("");
+        trasiego.Salir();
+    }
+}

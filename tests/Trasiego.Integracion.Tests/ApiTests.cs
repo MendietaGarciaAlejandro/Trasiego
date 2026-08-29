@@ -1,10 +1,12 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Trasiego.Contratos;
 using Trasiego.Dominio.Catalogo;
 using Trasiego.Dominio.Valoracion;
+using Trasiego.Infraestructura.Persistencia;
 
 namespace Trasiego.Integracion.Tests;
 
@@ -13,7 +15,7 @@ public class ApiTests(BaseDeDatosDePruebas baseDeDatos) : IAsyncLifetime
 {
     // Las mismas opciones que la Api: alli los enums salen por su nombre, asi que cualquier
     // cliente tiene que leerlos igual.
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
+    internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
         Converters = { new JsonStringEnumConverter() },
     };
@@ -23,11 +25,30 @@ public class ApiTests(BaseDeDatosDePruebas baseDeDatos) : IAsyncLifetime
     private ApiDePruebas _api = null!;
     private HttpClient _cliente = null!;
 
-    public Task InitializeAsync()
+    public async Task InitializeAsync()
     {
         _api = new ApiDePruebas(baseDeDatos.CadenaDeConexion);
         _cliente = _api.CreateClient();
-        return Task.CompletedTask;
+
+        // Todo lo de aqui abajo va identificado como responsable; que pasa sin identificarse
+        // o siendo operario tiene sus propios tests.
+        await Identificarse(_cliente, "encargada@trasiego.test");
+    }
+
+    /// <summary>
+    /// Entra con uno de los usuarios que siembra el arranque en desarrollo y deja el token
+    /// puesto en las peticiones siguientes.
+    /// </summary>
+    internal static async Task Identificarse(HttpClient cliente, string correo)
+    {
+        var respuesta = await cliente.PostAsJsonAsync(
+            "/api/acceso", new AccesoPedido(correo, SembradorDeDesarrollo.Contrasena), Json);
+
+        respuesta.EnsureSuccessStatusCode();
+        var entrada = (await respuesta.Content.ReadFromJsonAsync<EntradaVista>(Json))!;
+
+        cliente.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", entrada.Token);
     }
 
     public async Task DisposeAsync()

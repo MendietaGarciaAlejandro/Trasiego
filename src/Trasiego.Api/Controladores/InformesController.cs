@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Trasiego.Aplicacion.Informes;
 using Trasiego.Contratos;
@@ -5,6 +6,7 @@ using Trasiego.Contratos;
 namespace Trasiego.Api.Controladores;
 
 [ApiController]
+[Authorize]
 [Route("api/informes")]
 public class InformesController(ServicioDeInformes informes) : ControllerBase
 {

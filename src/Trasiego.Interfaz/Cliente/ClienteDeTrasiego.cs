@@ -1,7 +1,9 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Trasiego.Contratos;
+using Trasiego.Dominio.Acceso;
 
 namespace Trasiego.Interfaz.Cliente;
 
@@ -15,6 +17,50 @@ public class ClienteDeTrasiego(HttpClient http)
     {
         Converters = { new JsonStringEnumConverter() },
     };
+
+    private string? _token;
+
+    public string? Nombre { get; private set; }
+
+    public RolDeUsuario? Rol { get; private set; }
+
+    public bool HaEntrado => _token is not null;
+
+    public bool EsResponsable => Rol is RolDeUsuario.Responsable;
+
+    /// <summary>
+    /// Salta al entrar y al salir. Quien decide si se enseña la portada o la aplicacion no
+    /// es el mismo componente que cierra la sesion, asi que sin avisar se quedaria pintado
+    /// lo de antes.
+    /// </summary>
+    public event Action? SesionCambiada;
+
+    public async Task Entrar(string correo, string contrasena)
+    {
+        // Sin token todavia, asi que esta peticion va suelta a proposito.
+        var entrada = await Mandar<AccesoPedido, EntradaVista>(
+            "api/acceso", new AccesoPedido(correo, contrasena));
+
+        _token = entrada.Token;
+        Nombre = entrada.Nombre;
+        Rol = entrada.Rol;
+
+        SesionCambiada?.Invoke();
+    }
+
+    /// <summary>
+    /// El token se queda en memoria y no se guarda en ningun sitio, asi que cerrar la
+    /// aplicacion es salir. Guardarlo seria comodo, pero un token en el almacenamiento del
+    /// navegador se lo lleva cualquiera que consiga meter un script en la pagina.
+    /// </summary>
+    public void Salir()
+    {
+        _token = null;
+        Nombre = null;
+        Rol = null;
+
+        SesionCambiada?.Invoke();
+    }
 
     public Task<IReadOnlyList<ArticuloVisto>> Articulos(bool incluirBajas = false) =>
         Traer<IReadOnlyList<ArticuloVisto>>($"api/articulos?incluirBajas={incluirBajas}");
@@ -67,22 +113,34 @@ public class ClienteDeTrasiego(HttpClient http)
 
     public async Task<ReproduccionVista> Aplicar(Guid articuloId, Guid almacenId)
     {
-        var respuesta = await http.PostAsync(
-            $"api/recalculo?articuloId={articuloId}&almacenId={almacenId}", null);
+        using var peticion = new HttpRequestMessage(
+            HttpMethod.Post, $"api/recalculo?articuloId={articuloId}&almacenId={almacenId}");
 
-        return await Leer<ReproduccionVista>(respuesta);
+        return await Leer<ReproduccionVista>(await Enviar(peticion));
     }
 
     private async Task<T> Traer<T>(string ruta)
     {
-        var respuesta = await http.GetAsync(ruta);
-        return await Leer<T>(respuesta);
+        using var peticion = new HttpRequestMessage(HttpMethod.Get, ruta);
+        return await Leer<T>(await Enviar(peticion));
     }
 
-    private async Task<TRespuesta> Mandar<TPeticion, TRespuesta>(string ruta, TPeticion peticion)
+    private async Task<TRespuesta> Mandar<TPeticion, TRespuesta>(string ruta, TPeticion cuerpo)
     {
-        var respuesta = await http.PostAsJsonAsync(ruta, peticion, Json);
-        return await Leer<TRespuesta>(respuesta);
+        using var peticion = new HttpRequestMessage(HttpMethod.Post, ruta)
+        {
+            Content = JsonContent.Create(cuerpo, options: Json),
+        };
+
+        return await Leer<TRespuesta>(await Enviar(peticion));
+    }
+
+    private Task<HttpResponseMessage> Enviar(HttpRequestMessage peticion)
+    {
+        if (_token is not null)
+            peticion.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+
+        return http.SendAsync(peticion);
     }
 
     private static async Task<T> Leer<T>(HttpResponseMessage respuesta)

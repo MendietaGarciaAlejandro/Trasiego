@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Trasiego.Aplicacion.Abstracciones;
+using Trasiego.Dominio.Acceso;
 using Trasiego.Dominio.Almacenes;
 using Trasiego.Dominio.Cierres;
 using Trasiego.Dominio.Catalogo;
@@ -11,6 +12,7 @@ namespace Trasiego.Infraestructura.Persistencia;
 
 public class ContextoDeTrasiego(DbContextOptions<ContextoDeTrasiego> opciones) : DbContext(opciones)
 {
+    public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Articulo> Articulos => Set<Articulo>();
     public DbSet<Almacen> Almacenes => Set<Almacen>();
     public DbSet<Movimiento> Movimientos => Set<Movimiento>();

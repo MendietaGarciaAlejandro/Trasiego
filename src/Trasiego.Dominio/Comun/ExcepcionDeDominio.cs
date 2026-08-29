@@ -14,3 +14,6 @@ public sealed class ReglaDeNegocio(string mensaje) : ExcepcionDeDominio(mensaje)
 
 /// <summary>La operacion choca con el estado actual de los datos.</summary>
 public sealed class Conflicto(string mensaje) : ExcepcionDeDominio(mensaje);
+
+/// <summary>Quien lo pide no es quien dice ser.</summary>
+public sealed class NoAutorizado(string mensaje) : ExcepcionDeDominio(mensaje);

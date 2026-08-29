@@ -1,0 +1,54 @@
+@inject ClienteDeTrasiego trasiego
+
+<div class="portada">
+    <div class="tarjeta">
+        <h1>Trasiego</h1>
+        <p class="lema">Inventario con valoracion</p>
+
+        <label>
+            Correo
+            <input @bind="correo" @bind:event="oninput" @onkeydown="AlPulsar" />
+        </label>
+        <label>
+            Contraseña
+            <input type="password" @bind="contrasena" @bind:event="oninput" @onkeydown="AlPulsar" />
+        </label>
+
+        <button class="principal" @onclick="Entrar" disabled="@ocupado">Entrar</button>
+
+        @if (aviso is not null)
+        {
+            <p class="aviso">@aviso</p>
+        }
+    </div>
+</div>
+
+@code {
+    private string correo = "";
+    private string contrasena = "";
+
+    private string? aviso;
+    private bool ocupado;
+
+    private Task AlPulsar(KeyboardEventArgs tecla) =>
+        tecla.Key is "Enter" ? Entrar() : Task.CompletedTask;
+
+    private async Task Entrar()
+    {
+        ocupado = true;
+        aviso = null;
+
+        try
+        {
+            await trasiego.Entrar(correo, contrasena);
+        }
+        catch (FalloDeTrasiego fallo)
+        {
+            aviso = fallo.Message;
+        }
+        finally
+        {
+            ocupado = false;
+        }
+    }
+}

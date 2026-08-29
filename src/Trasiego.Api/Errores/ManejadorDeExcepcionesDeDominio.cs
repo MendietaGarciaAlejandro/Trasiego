@@ -36,6 +36,7 @@ public class ManejadorDeExcepcionesDeDominio(IProblemDetailsService problemas) :
 
     private static (int? Codigo, string? Titulo) Clasificar(Exception excepcion) => excepcion switch
     {
+        NoAutorizado => (StatusCodes.Status401Unauthorized, "Sin identificar"),
         NoEncontrado => (StatusCodes.Status404NotFound, "No existe"),
         Conflicto => (StatusCodes.Status409Conflict, "Choca con el estado actual"),
         ReglaDeNegocio => (StatusCodes.Status422UnprocessableEntity, "Regla de almacen"),

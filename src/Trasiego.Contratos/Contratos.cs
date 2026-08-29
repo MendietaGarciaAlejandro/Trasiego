@@ -1,3 +1,4 @@
+using Trasiego.Dominio.Acceso;
 using Trasiego.Dominio.Almacenes;
 using Trasiego.Dominio.Catalogo;
 using Trasiego.Dominio.Cierres;
@@ -12,6 +13,20 @@ namespace Trasiego.Contratos;
 // serializados serian un objeto con un campo dentro.
 
 public record EstadoDeSalud(string Estado);
+
+// ---- Acceso -------------------------------------------------------------------------
+
+public record AccesoPedido(string Correo, string Contrasena);
+
+public record EntradaVista(string Token, string Nombre, RolDeUsuario Rol);
+
+public record AltaDeUsuario(string Correo, string Nombre, string Contrasena, RolDeUsuario Rol);
+
+public record UsuarioVisto(Guid Id, string Correo, string Nombre, RolDeUsuario Rol, bool Activo)
+{
+    public static UsuarioVisto De(Usuario usuario) => new(
+        usuario.Id, usuario.Correo, usuario.Nombre, usuario.Rol, usuario.Activo);
+}
 
 // ---- Catalogo -----------------------------------------------------------------------
 

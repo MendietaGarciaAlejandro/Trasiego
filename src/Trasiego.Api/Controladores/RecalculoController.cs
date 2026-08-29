@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Trasiego.Dominio.Acceso;
 using Trasiego.Contratos;
 using Trasiego.Api.Contratos;
 using Trasiego.Aplicacion.Valoracion;
@@ -6,6 +8,7 @@ using Trasiego.Aplicacion.Valoracion;
 namespace Trasiego.Api.Controladores;
 
 [ApiController]
+[Authorize(Roles = Roles.Responsable)]
 [Route("api/recalculo")]
 public class RecalculoController(ServicioDeRecalculo recalculo) : ControllerBase
 {

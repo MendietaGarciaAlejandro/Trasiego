@@ -1,8 +1,13 @@
+using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using Trasiego.Api.Errores;
+using Trasiego.Aplicacion.Abstracciones;
+using Trasiego.Aplicacion.Acceso;
 using Trasiego.Aplicacion.Almacenes;
 using Trasiego.Aplicacion.Catalogo;
 using Trasiego.Aplicacion.Cierres;
@@ -12,6 +17,7 @@ using Trasiego.Aplicacion.Valoracion;
 using Trasiego.Contratos;
 using Trasiego.Infraestructura;
 using Trasiego.Infraestructura.Persistencia;
+using Trasiego.Infraestructura.Seguridad;
 
 var constructor = WebApplication.CreateBuilder(args);
 
@@ -20,6 +26,35 @@ var cadenaDeConexion = constructor.Configuration.GetConnectionString("Trasiego")
         "Falta la cadena de conexion 'Trasiego'. En desarrollo esta en appsettings.Development.json.");
 
 constructor.Services.AgregarInfraestructura(cadenaDeConexion);
+
+constructor.Services.Configure<OpcionesDeToken>(
+    constructor.Configuration.GetSection(OpcionesDeToken.Seccion));
+
+var jwt = constructor.Configuration.GetSection(OpcionesDeToken.Seccion).Get<OpcionesDeToken>()
+    ?? throw new InvalidOperationException("Falta la seccion 'Jwt' de configuracion.");
+
+if (string.IsNullOrWhiteSpace(jwt.Clave))
+    throw new InvalidOperationException(
+        "Falta 'Jwt:Clave'. Ponla con: dotnet user-secrets set \"Jwt:Clave\" \"<una clave larga>\" " +
+        "--project src/Trasiego.Api");
+
+constructor.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(opciones => opciones.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwt.Emisor,
+        ValidAudience = jwt.Audiencia,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Clave)),
+
+        // Sin margen extra: un token caducado deja de valer al segundo.
+        ClockSkew = TimeSpan.Zero,
+    });
+
+constructor.Services.AddAuthorization();
 
 constructor.Services
     .AddControllers()
@@ -30,6 +65,7 @@ constructor.Services
 
 constructor.Services.AddOpenApi();
 
+constructor.Services.AddScoped<ServicioDeAcceso>();
 constructor.Services.AddScoped<ServicioDeArticulos>();
 constructor.Services.AddScoped<ServicioDeAlmacenes>();
 constructor.Services.AddScoped<ServicioDeMovimientos>();
@@ -62,7 +98,11 @@ if (app.Environment.IsDevelopment())
     // En desarrollo se migra al arrancar para no tener que acordarse de hacerlo a mano.
     // En produccion las migraciones se aplican en el despliegue, no desde la aplicacion.
     using var ambito = app.Services.CreateScope();
-    await ambito.ServiceProvider.GetRequiredService<ContextoDeTrasiego>().Database.MigrateAsync();
+    var contexto = ambito.ServiceProvider.GetRequiredService<ContextoDeTrasiego>();
+    await contexto.Database.MigrateAsync();
+
+    await SembradorDeDesarrollo.Sembrar(
+        contexto, ambito.ServiceProvider.GetRequiredService<IHuellaDeContrasenas>());
 }
 
 app.MapGet("/salud", async Task<Results<Ok<EstadoDeSalud>, ProblemHttpResult>> (
@@ -70,6 +110,9 @@ app.MapGet("/salud", async Task<Results<Ok<EstadoDeSalud>, ProblemHttpResult>> (
     await contexto.Database.CanConnectAsync()
         ? TypedResults.Ok(new EstadoDeSalud("vivo"))
         : TypedResults.Problem("No se llega a la base de datos.", statusCode: 503));
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 
