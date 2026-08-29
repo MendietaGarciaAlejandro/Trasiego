@@ -451,6 +451,13 @@ De la renovación solo se guarda su huella, igual que con las contraseñas. Ahí
 BCrypt: BCrypt va lento a propósito porque una contraseña la elige una persona y se puede
 probar a adivinar, pero esto son treinta y dos bytes de azar y no hay nada que adivinar.
 
+En el escritorio no hay navegador que guarde la cookie: la guarda el `HttpClient`, y eso se
+muere con la aplicación. Así que el host de WPF se monta su propio contenedor de cookies, le
+saca la renovación y la deja en el **administrador de credenciales de Windows**, que la cifra
+con la cuenta de quien ha entrado y además la enseña en el panel del sistema: quien quiera
+olvidar la sesión de esa máquina puede hacerlo sin abrir Trasiego. Lo que se guarda es la
+renovación, nunca la contraseña, y al salir se borra.
+
 Cada doce horas pasa algo a tirar las que ya habían caducado, porque si no la tabla solo
 crece: se apunta una cada vez que alguien entra o renueva, y renovar pasa cada cuarto de hora
 mientras se trabaja. Se borran **solo por fecha**, aunque estén gastadas: una gastada sigue
@@ -484,7 +491,8 @@ el camino.
 13. **Informes.** Valoración a fecha, y las pantallas de cierre y recálculo.
 14. **Versión web.** WebAssembly servido por la Api, con las mismas pantallas.
 15. **Traspasos entre almacenes.** El coste que sale de uno es el que entra en el otro.
-16. **Autenticación.** JWT con dos roles, y la sesión aguantando un recargado.
+16. **Autenticación.** JWT con dos roles, y la sesión aguantando un recargado en la web y un
+    cierre de la ventana en el escritorio.
 
 De todo eso, las fases 3 a 9 son el proyecto de verdad: lo demás es lo que hace falta para
 poder verlo.
@@ -493,9 +501,6 @@ poder verlo.
 
 Lo que se me ocurre a partir de aquí, por orden de ganas:
 
-- **Que el escritorio también recuerde la sesión.** En la web la cookie sobrevive al recargado,
-  pero al cerrar la ventana de WPF se pierde. Habría que guardar la renovación en el
-  almacenamiento de credenciales de Windows, que no es lo mismo que dejarla en un fichero.
 - **Documentos detrás de los movimientos.** Ahora un albarán es un concepto escrito a mano en
   un campo de texto. Un albarán de verdad agrupa líneas, y eso cambia bastantes cosas.
 - **Lotes y caducidades.** Está fuera del alcance a propósito, pero es lo que pediría cualquiera
