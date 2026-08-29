@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Time.Testing;
+using Trasiego.Aplicacion.Cierres;
 using Trasiego.Aplicacion.Movimientos;
 using Trasiego.Dominio.Almacenes;
 using Trasiego.Dominio.Catalogo;
@@ -17,11 +18,18 @@ internal static class Escenario
     // articulo y su almacen: con referencias fijas se pisarian unos a otros.
     private static int _siguiente;
 
+    public static ServicioDeCierres Cierres(ContextoDeTrasiego contexto) =>
+        new(new RepositorioDeAlmacenes(contexto),
+            new RepositorioDeCierres(contexto),
+            new UnidadDeTrabajo(contexto),
+            new FakeTimeProvider(Ahora));
+
     public static ServicioDeMovimientos Servicio(ContextoDeTrasiego contexto) =>
         new(new RepositorioDeArticulos(contexto),
             new RepositorioDeAlmacenes(contexto),
             new RepositorioDeMovimientos(contexto),
             new RepositorioDeValoracion(contexto),
+            new RepositorioDeCierres(contexto),
             new UnidadDeTrabajo(contexto),
             new FakeTimeProvider(Ahora));
 

@@ -216,6 +216,41 @@ apoyarla. Un sistema con contabilidad la llevaría a una cuenta de resultados; T
 tiene contabilidad, así que la deja a la vista. Hay un test que fija ese comportamiento para
 que sea una decisión y no una casualidad.
 
+### El valor a una fecha es un group by
+
+Como cada movimiento lleva su coste, sumar los movimientos hasta una fecha ya da lo que valía
+el almacén ese día. No hace falta reconstruir capas ni reproducir nada. Eso es consecuencia
+directa de la invariante, y es lo que hace que los informes de valoración a fecha sean
+baratos.
+
+Con una condición: que nadie meta después un movimiento con fecha anterior al corte. De eso
+se encarga el cierre.
+
+### El cierre va por almacén
+
+Cerrar un almacén hasta un día fija que por debajo de esa fecha ya no se registra nada. Va
+por almacén y no de golpe para todos porque aquí no hay contabilidad que obligue a un único
+corte: cada almacén se inventaría cuando le toca, y cerrar el de la obra no tiene por qué
+esperar a que alguien cuente el de la tienda.
+
+Al cerrar se guarda lo que había, artículo a artículo. Es redundante — se puede volver a
+calcular sumando movimientos — y se guarda **precisamente por eso**: `Comprobar` vuelve a
+sumar y compara con lo declarado, así que un cierre que deja de cuadrar es la señal de que
+alguien ha tocado el pasado por debajo de la fecha de cierre. Debería salir vacío siempre.
+
+No hay reapertura. Un cierre que se puede deshacer no garantiza nada, y el día que haga falta
+será una operación con su rastro, no un botón.
+
+### Lo que llega tarde queda marcado
+
+Un movimiento cuya fecha contable es anterior a algo que ya estaba registrado se marca como
+retroactivo. No cambia cómo se valora: lo ya valorado no se revisa. Lo que dice es que la
+valoración de ese artículo **no es la que saldría de recalcularla desde cero**, y eso hay que
+poder verlo antes de fiarse de un informe.
+
+Recalcular de verdad es lo siguiente, y ahora ya se puede: el cierre da el punto desde el que
+empezar y el límite de hasta dónde se puede tocar.
+
 ### El saldo lleva signo y la cantidad no
 
 Desde el principio dije que una `Cantidad` es una magnitud y nunca es negativa, y que el

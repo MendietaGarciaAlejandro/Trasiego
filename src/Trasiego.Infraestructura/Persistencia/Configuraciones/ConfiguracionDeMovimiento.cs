@@ -17,6 +17,12 @@ public class ConfiguracionDeMovimiento : IEntityTypeConfiguration<Movimiento>
 
         movimiento.Property(m => m.Tipo).HasConversion<int>();
         movimiento.Property(m => m.Motivo).HasConversion<int>();
+
+        // Indice filtrado: los retroactivos son pocos y se buscan solos, para poder listar
+        // que articulos no valorarian igual si se recalcularan.
+        movimiento.HasIndex(m => new { m.ArticuloId, m.AlmacenId })
+            .HasFilter("Retroactivo = 1")
+            .HasDatabaseName("IX_Movimientos_Retroactivos");
         movimiento.Property(m => m.Concepto).HasMaxLength(200);
 
         movimiento.Property(m => m.Cantidad)

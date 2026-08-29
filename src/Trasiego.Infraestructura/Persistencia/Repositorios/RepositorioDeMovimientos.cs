@@ -51,6 +51,16 @@ public class RepositorioDeMovimientos(ContextoDeTrasiego contexto) : IRepositori
         return Importe.De(suma ?? 0m);
     }
 
+    public async Task<DateOnly?> UltimaFechaContable(
+        Guid articuloId,
+        Guid almacenId,
+        CancellationToken cancelacion = default) =>
+        await contexto.Movimientos
+            .Where(m => m.ArticuloId == articuloId && m.AlmacenId == almacenId)
+            .OrderByDescending(m => m.FechaContable)
+            .Select(m => (DateOnly?)m.FechaContable)
+            .FirstOrDefaultAsync(cancelacion);
+
     public Task<bool> TieneMovimientos(Guid articuloId, CancellationToken cancelacion = default) =>
         contexto.Movimientos.AnyAsync(m => m.ArticuloId == articuloId, cancelacion);
 

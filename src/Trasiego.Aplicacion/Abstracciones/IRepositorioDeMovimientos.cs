@@ -28,6 +28,12 @@ public interface IRepositorioDeMovimientos
         Guid almacenId,
         CancellationToken cancelacion = default);
 
+    /// <summary>La fecha contable mas reciente que hay registrada, para saber si algo llega tarde.</summary>
+    Task<DateOnly?> UltimaFechaContable(
+        Guid articuloId,
+        Guid almacenId,
+        CancellationToken cancelacion = default);
+
     Task<bool> TieneMovimientos(Guid articuloId, CancellationToken cancelacion = default);
 
     /// <summary>

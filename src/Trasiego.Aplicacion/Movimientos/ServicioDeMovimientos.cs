@@ -13,6 +13,7 @@ public class ServicioDeMovimientos(
     IRepositorioDeAlmacenes almacenes,
     IRepositorioDeMovimientos movimientos,
     IRepositorioDeValoracion valoracion,
+    IRepositorioDeCierres cierres,
     IUnidadDeTrabajo unidadDeTrabajo,
     TimeProvider reloj)
 {
@@ -33,12 +34,12 @@ public class ServicioDeMovimientos(
         string? concepto = null,
         CancellationToken cancelacion = default)
     {
-        var (articulo, almacen) = await Comprobaciones(
+        var (articulo, almacen, retroactivo) = await Comprobaciones(
             articuloId, almacenId, cantidad, fechaContable, cancelacion);
 
         var entrada = Meter(
             articulo, almacen, cantidad, coste, fechaContable, concepto,
-            MotivoDeMovimiento.Ordinario);
+            MotivoDeMovimiento.Ordinario, retroactivo);
 
         await MeterEnAlmacen(
             articulo, almacen, entrada, cantidad, coste, fechaContable, cancelacion);
@@ -58,12 +59,12 @@ public class ServicioDeMovimientos(
         string? concepto = null,
         CancellationToken cancelacion = default)
     {
-        var (articulo, almacen) = await Comprobaciones(
+        var (articulo, almacen, retroactivo) = await Comprobaciones(
             articuloId, almacenId, cantidad, fechaContable, cancelacion);
 
         var salida = await Sacar(
             articulo, almacen, cantidad, fechaContable, concepto,
-            MotivoDeMovimiento.Ordinario, cancelacion);
+            MotivoDeMovimiento.Ordinario, retroactivo, cancelacion);
 
         await unidadDeTrabajo.GuardarCambios(cancelacion);
         return salida;
@@ -85,7 +86,7 @@ public class ServicioDeMovimientos(
         if (salida.Tipo is not TipoDeMovimiento.Salida)
             throw new ReglaDeNegocio("Solo se devuelve lo que ha salido.");
 
-        var (articulo, almacen) = await Comprobaciones(
+        var (articulo, almacen, retroactivo) = await Comprobaciones(
             salida.ArticuloId, salida.AlmacenId, cantidad, fechaContable, cancelacion);
 
         var consumos = await valoracion.ConsumosDe(salidaId, cancelacion);
@@ -95,7 +96,7 @@ public class ServicioDeMovimientos(
         var devolucion = new Movimiento(
             articulo.Id, almacen.Id, TipoDeMovimiento.Entrada, cantidad, coste,
             fechaContable, reloj.GetUtcNow(), concepto,
-            MotivoDeMovimiento.Devolucion, salidaId);
+            MotivoDeMovimiento.Devolucion, salidaId, retroactivo);
 
         movimientos.Agregar(devolucion);
 
@@ -135,7 +136,7 @@ public class ServicioDeMovimientos(
         string? concepto = null,
         CancellationToken cancelacion = default)
     {
-        var (articulo, almacen) = await Comprobaciones(
+        var (articulo, almacen, retroactivo) = await Comprobaciones(
             articuloId, almacenId, contada, fechaContable, cancelacion, permitirCero: true);
 
         var saldo = await movimientos.SaldoDe(articulo.Id, almacen.Id, cancelacion: cancelacion);
@@ -146,10 +147,10 @@ public class ServicioDeMovimientos(
         var movimiento = diferencia < 0m
             ? await Sacar(
                 articulo, almacen, Cantidad.De(-diferencia), fechaContable, concepto,
-                MotivoDeMovimiento.Regularizacion, cancelacion)
+                MotivoDeMovimiento.Regularizacion, retroactivo, cancelacion)
             : await MeterLoEncontrado(
                 articulo, almacen, Cantidad.De(diferencia), saldo.Disponible,
-                fechaContable, concepto, cancelacion);
+                fechaContable, concepto, retroactivo, cancelacion);
 
         await unidadDeTrabajo.GuardarCambios(cancelacion);
         return movimiento;
@@ -162,11 +163,12 @@ public class ServicioDeMovimientos(
         Importe coste,
         DateOnly fechaContable,
         string? concepto,
-        MotivoDeMovimiento motivo)
+        MotivoDeMovimiento motivo,
+        bool retroactivo)
     {
         var entrada = new Movimiento(
             articulo.Id, almacen.Id, TipoDeMovimiento.Entrada, cantidad, coste,
-            fechaContable, reloj.GetUtcNow(), concepto, motivo);
+            fechaContable, reloj.GetUtcNow(), concepto, motivo, null, retroactivo);
 
         movimientos.Agregar(entrada);
         return entrada;
@@ -248,6 +250,7 @@ public class ServicioDeMovimientos(
         DateOnly fechaContable,
         string? concepto,
         MotivoDeMovimiento motivo,
+        bool retroactivo,
         CancellationToken cancelacion)
     {
         var capas = await valoracion.CapasConExistencias(articulo.Id, almacen.Id, cancelacion);
@@ -269,7 +272,7 @@ public class ServicioDeMovimientos(
 
         var salida = new Movimiento(
             articulo.Id, almacen.Id, TipoDeMovimiento.Salida, cantidad, coste + costeEnDescubierto,
-            fechaContable, reloj.GetUtcNow(), concepto, motivo);
+            fechaContable, reloj.GetUtcNow(), concepto, motivo, null, retroactivo);
 
         movimientos.Agregar(salida);
 
@@ -307,6 +310,7 @@ public class ServicioDeMovimientos(
         Cantidad hay,
         DateOnly fechaContable,
         string? concepto,
+        bool retroactivo,
         CancellationToken cancelacion)
     {
         if (hay.EsCero)
@@ -322,7 +326,7 @@ public class ServicioDeMovimientos(
 
         var entrada = Meter(
             articulo, almacen, diferencia, coste, fechaContable, concepto,
-            MotivoDeMovimiento.Regularizacion);
+            MotivoDeMovimiento.Regularizacion, retroactivo);
 
         await MeterEnAlmacen(
             articulo, almacen, entrada, diferencia, coste, fechaContable, cancelacion);
@@ -330,7 +334,7 @@ public class ServicioDeMovimientos(
         return entrada;
     }
 
-    private async Task<(Articulo, Almacen)> Comprobaciones(
+    private async Task<(Articulo Articulo, Almacen Almacen, bool Retroactivo)> Comprobaciones(
         Guid articuloId,
         Guid almacenId,
         Cantidad cantidad,
@@ -361,6 +365,18 @@ public class ServicioDeMovimientos(
         if (fechaContable > hoy)
             throw new ReglaDeNegocio("No se puede registrar un movimiento con fecha futura.");
 
-        return (articulo, almacen);
+        var cierre = await cierres.Ultimo(almacen.Id, cancelacion);
+        if (cierre is not null && fechaContable <= cierre.Hasta)
+            throw new ReglaDeNegocio(
+                $"{almacen.Codigo} esta cerrado hasta el {cierre.Hasta:dd/MM/yyyy}, " +
+                "esa fecha ya no admite movimientos.");
+
+        // Llega tarde si hay algo registrado con fecha posterior. Se marca y ya esta: no se
+        // revaloriza nada, pero queda constancia de que la valoracion de este articulo no es
+        // la que saldria de recalcularlo desde cero.
+        var ultima = await movimientos.UltimaFechaContable(articulo.Id, almacen.Id, cancelacion);
+        var retroactivo = ultima is not null && fechaContable < ultima;
+
+        return (articulo, almacen, retroactivo);
     }
 }

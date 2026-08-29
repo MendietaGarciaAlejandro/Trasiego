@@ -13,7 +13,8 @@ public class Movimiento(
     DateTimeOffset momentoDeRegistro,
     string? concepto = null,
     MotivoDeMovimiento motivo = MotivoDeMovimiento.Ordinario,
-    Guid? movimientoOrigenId = null)
+    Guid? movimientoOrigenId = null,
+    bool retroactivo = false)
 {
     public Guid Id { get; private set; } = Guid.CreateVersion7();
 
@@ -46,6 +47,11 @@ public class Movimiento(
     // Solo lo llevan las devoluciones: la salida de la que vuelve el material. Es lo que
     // permite devolver al coste al que salio y no al de hoy.
     public Guid? MovimientoOrigenId { get; private set; } = movimientoOrigenId;
+
+    // Llego con fecha anterior a algun movimiento que ya estaba registrado. No cambia como
+    // se valora: lo ya valorado no se revisa. Lo que dice es que la valoracion de este
+    // articulo no es la que saldria de recalcular desde cero, y eso hay que poder verlo.
+    public bool Retroactivo { get; private set; } = retroactivo;
 
     public string? Concepto { get; private set; } =
         string.IsNullOrWhiteSpace(concepto) ? null : Comprobar.ComoMucho(concepto.Trim(), 200);
