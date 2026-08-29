@@ -12,7 +12,7 @@ public class RepositorioDeMovimientos(ContextoDeTrasiego contexto) : IRepositori
     public Task<Movimiento?> PorId(Guid id, CancellationToken cancelacion = default) =>
         contexto.Movimientos.FirstOrDefaultAsync(m => m.Id == id, cancelacion);
 
-    public async Task<Cantidad> Saldo(
+    public async Task<Saldo> SaldoDe(
         Guid articuloId,
         Guid almacenId,
         DateOnly? aFecha = null,
@@ -32,7 +32,7 @@ public class RepositorioDeMovimientos(ContextoDeTrasiego contexto) : IRepositori
                 """)
             .SingleAsync(cancelacion);
 
-        return Cantidad.De(suma ?? 0m);
+        return Saldo.De(suma ?? 0m);
     }
 
     public async Task<Importe> CosteNeto(

@@ -13,7 +13,7 @@ public interface IRepositorioDeMovimientos
     /// Lo que hay de un articulo en un almacen. Con <paramref name="aFecha"/> se pregunta
     /// por lo que habia al cierre de ese dia contable.
     /// </summary>
-    Task<Cantidad> Saldo(
+    Task<Saldo> SaldoDe(
         Guid articuloId,
         Guid almacenId,
         DateOnly? aFecha = null,

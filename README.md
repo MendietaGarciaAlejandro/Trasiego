@@ -189,11 +189,39 @@ calcular algo, y va comentado como tal.
 Si no había existencias no hay precio del que tirar, y en vez de inventarse uno la operación
 se rechaza pidiendo que se registre como una entrada normal con su coste.
 
-### De momento no se deja bajar de cero
+### Bajar de cero se permite, pero es una decisión del almacén
 
-Una salida que dejaría el saldo en negativo se rechaza, y el aviso dice cuánto queda. Es lo
-que hace un ERP por defecto. Permitirlo es uno de los casos de la fase 4, y entonces será una
-opción del almacén, no la norma.
+Por defecto una salida que dejaría el saldo en negativo se rechaza. Un almacén puede
+marcarse como que admite descubierto, y entonces sirve lo que no tiene: una obra gasta
+material que todavía no se ha dado de alta, una tienda no.
+
+Lo que sale sin estar hay que valorarlo con algo, y se valora **al último precio conocido**,
+que es la mejor suposición disponible. Si por ese almacén no ha pasado nunca ese artículo no
+hay ningún precio del que tirar, y en vez de inventarse uno la operación se rechaza.
+
+El descubierto se guarda: es lo contrario de una capa, una deuda de existencias con un coste
+provisional que **resta** del valor del almacén. Cuando llega la entrada, lo primero que hace
+es taparlo.
+
+Aquí está lo que me parece más interesante de toda esta parte. Si la entrada que tapa el
+descubierto costó otra cosa de lo que se supuso, esa diferencia es real y tiene que quedar en
+algún sitio. Como lo ya valorado no se revisa, **la carga lo que quede en el almacén**: cinco
+unidades que salieron valoradas a 2 € y llegaron costando 4 € dejan tres unidades valiendo
+22 € en vez de 12 €. Eso no lo he decidido yo, sale solo de mantener la invariante.
+
+Y hay un caso en el que no queda nada que la cargue: si la entrada tapa justo el descubierto,
+el almacén se queda **sin existencias y valiendo 15 €**. No es un fallo, es la diferencia de
+coste de lo que se sirvió sin tener, que sigue siendo real aunque ya no haya género donde
+apoyarla. Un sistema con contabilidad la llevaría a una cuenta de resultados; Trasiego no
+tiene contabilidad, así que la deja a la vista. Hay un test que fija ese comportamiento para
+que sea una decisión y no una casualidad.
+
+### El saldo lleva signo y la cantidad no
+
+Desde el principio dije que una `Cantidad` es una magnitud y nunca es negativa, y que el
+saldo de un almacén sí puede serlo. Aquí es donde hizo falta el tipo aparte: `Saldo` lleva
+signo, sabe si está en descubierto, y su `Disponible` es cero cuando lo está. Una cantidad
+sigue sin poder ser negativa, así que una capa tampoco.
 
 ## Por dónde va
 

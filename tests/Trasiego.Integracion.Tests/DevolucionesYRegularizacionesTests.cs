@@ -144,7 +144,7 @@ public class DevolucionesYRegularizacionesTests(BaseDeDatosDePruebas baseDeDatos
         Assert.Equal(MotivoDeMovimiento.Regularizacion, ajuste.Motivo);
         Assert.Equal(Cantidad.De(2), ajuste.Cantidad);
         Assert.Equal(Importe.De(4m), ajuste.Coste);
-        Assert.Equal(Cantidad.De(8), await movimientos.Saldo(articulo.Id, almacen.Id));
+        Assert.Equal(Saldo.De(8), await movimientos.SaldoDe(articulo.Id, almacen.Id));
     }
 
     [Fact]

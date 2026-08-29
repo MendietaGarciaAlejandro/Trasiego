@@ -28,14 +28,15 @@ internal static class Escenario
     public static async Task<(Articulo Articulo, Almacen Almacen)> Catalogo(
         ContextoDeTrasiego contexto,
         UnidadDeMedida unidad = UnidadDeMedida.Unidad,
-        MetodoDeValoracion metodo = MetodoDeValoracion.Fifo)
+        MetodoDeValoracion metodo = MetodoDeValoracion.Fifo,
+        bool permiteDescubierto = false)
     {
         var numero = Interlocked.Increment(ref _siguiente);
 
         var articulo = new Articulo($"ART-{numero}", $"Articulo {numero}", unidad, metodo);
         await new RepositorioDeArticulos(contexto).Alta(articulo);
 
-        var almacen = new Almacen($"A{numero}", $"Almacen {numero}");
+        var almacen = new Almacen($"A{numero}", $"Almacen {numero}", permiteDescubierto);
         await new RepositorioDeAlmacenes(contexto).Alta(almacen);
 
         return (articulo, almacen);

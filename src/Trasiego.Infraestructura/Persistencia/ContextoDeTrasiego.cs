@@ -13,6 +13,7 @@ public class ContextoDeTrasiego(DbContextOptions<ContextoDeTrasiego> opciones) :
     public DbSet<Movimiento> Movimientos => Set<Movimiento>();
     public DbSet<CapaDeExistencias> Capas => Set<CapaDeExistencias>();
     public DbSet<ConsumoDeCapa> Consumos => Set<ConsumoDeCapa>();
+    public DbSet<Descubierto> Descubiertos => Set<Descubierto>();
 
     protected override void OnModelCreating(ModelBuilder modelo)
     {

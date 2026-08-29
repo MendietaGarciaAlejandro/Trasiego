@@ -33,7 +33,27 @@ public interface IRepositorioDeValoracion
         Guid movimientoId,
         CancellationToken cancelacion = default);
 
-    /// <summary>Lo que vale ahora mismo lo que queda en el almacen.</summary>
+    void Agregar(Descubierto descubierto);
+
+    /// <summary>Los descubiertos por tapar, en el orden en que se produjeron.</summary>
+    Task<IReadOnlyList<Descubierto>> DescubiertosPendientes(
+        Guid articuloId,
+        Guid almacenId,
+        CancellationToken cancelacion = default);
+
+    /// <summary>
+    /// El coste por unidad de la ultima entrada que se conoce, para poder valorar lo que
+    /// sale sin estar. Nada si por ese almacen no ha pasado todavia ese articulo.
+    /// </summary>
+    Task<decimal?> UltimoCosteUnitario(
+        Guid articuloId,
+        Guid almacenId,
+        CancellationToken cancelacion = default);
+
+    /// <summary>
+    /// Lo que vale ahora mismo lo que queda en el almacen: las capas menos lo que resten
+    /// los descubiertos sin tapar.
+    /// </summary>
     Task<Importe> ValorDeLasExistencias(
         Guid articuloId,
         Guid almacenId,

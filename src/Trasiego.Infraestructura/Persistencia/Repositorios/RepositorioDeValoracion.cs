@@ -11,6 +11,8 @@ public class RepositorioDeValoracion(ContextoDeTrasiego contexto) : IRepositorio
 
     public void Agregar(ConsumoDeCapa consumo) => contexto.Consumos.Add(consumo);
 
+    public void Agregar(Descubierto descubierto) => contexto.Descubiertos.Add(descubierto);
+
     public async Task<IReadOnlyList<CapaDeExistencias>> CapasConExistencias(
         Guid articuloId,
         Guid almacenId,
@@ -50,16 +52,47 @@ public class RepositorioDeValoracion(ContextoDeTrasiego contexto) : IRepositorio
             .OrderBy(c => c.Id)
             .ToListAsync(cancelacion);
 
+    public async Task<IReadOnlyList<Descubierto>> DescubiertosPendientes(
+        Guid articuloId,
+        Guid almacenId,
+        CancellationToken cancelacion = default) =>
+        await contexto.Descubiertos
+            .Where(d => d.ArticuloId == articuloId && d.AlmacenId == almacenId)
+            .Where(d => d.CantidadCubierta != d.Cantidad)
+            .OrderBy(d => d.Id)
+            .ToListAsync(cancelacion);
+
+    public async Task<decimal?> UltimoCosteUnitario(
+        Guid articuloId,
+        Guid almacenId,
+        CancellationToken cancelacion = default) =>
+        await contexto.Database
+            .SqlQuery<decimal?>($"""
+                SELECT TOP 1 CosteInicial / CantidadInicial AS Value
+                FROM CapasDeExistencias
+                WHERE ArticuloId = {articuloId}
+                  AND AlmacenId = {almacenId}
+                  AND CantidadInicial > 0
+                ORDER BY FechaContable DESC, MomentoDeRegistro DESC, Id DESC
+                """)
+            .SingleOrDefaultAsync(cancelacion);
+
     public async Task<Importe> ValorDeLasExistencias(
         Guid articuloId,
         Guid almacenId,
         CancellationToken cancelacion = default)
     {
+        // Las capas menos lo que resten los descubiertos. Si esto no restara, un almacen que
+        // ha servido sin tener valdria lo mismo que uno que no ha servido nada, y la
+        // invariante dejaria de cuadrar en cuanto alguien sirviera en descubierto.
         var suma = await contexto.Database
             .SqlQuery<decimal?>($"""
-                SELECT SUM(CosteRestante) AS Value
-                FROM CapasDeExistencias
-                WHERE ArticuloId = {articuloId} AND AlmacenId = {almacenId}
+                SELECT
+                    ISNULL((SELECT SUM(CosteRestante) FROM CapasDeExistencias
+                            WHERE ArticuloId = {articuloId} AND AlmacenId = {almacenId}), 0)
+                  - ISNULL((SELECT SUM(Coste - CosteCubierto) FROM Descubiertos
+                            WHERE ArticuloId = {articuloId} AND AlmacenId = {almacenId}), 0)
+                  AS Value
                 """)
             .SingleAsync(cancelacion);
 

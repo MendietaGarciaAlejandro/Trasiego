@@ -17,7 +17,7 @@ public class ServicioDeMovimientos(
     TimeProvider reloj)
 {
     /// <summary>
-    /// Registra una entrada y abre la capa que las salidas iran vaciando.
+    /// Registra una entrada. Si el almacen debia genero, lo primero que hace es taparlo.
     /// </summary>
     /// <param name="coste">
     /// Lo que ha costado la entrada entera, no lo que cuesta cada unidad. Se pide asi
@@ -40,7 +40,8 @@ public class ServicioDeMovimientos(
             articulo, almacen, cantidad, coste, fechaContable, concepto,
             MotivoDeMovimiento.Ordinario);
 
-        await MeterEnCapas(articulo, almacen, entrada, cantidad, coste, fechaContable, cancelacion);
+        await MeterEnAlmacen(
+            articulo, almacen, entrada, cantidad, coste, fechaContable, cancelacion);
 
         await unidadDeTrabajo.GuardarCambios(cancelacion);
         return entrada;
@@ -104,8 +105,9 @@ public class ServicioDeMovimientos(
         // que este abierta y rehace la media, que es lo que se espera de una media.
         if (articulo.Metodo is MetodoDeValoracion.PrecioMedio)
         {
-            await MeterEnCapas(
-                articulo, almacen, devolucion, cantidad, coste, fechaContable, cancelacion);
+            MeterEnCapas(
+                articulo, almacen, devolucion, cantidad, coste, fechaContable,
+                await valoracion.CapaAbierta(articulo.Id, almacen.Id, cancelacion));
         }
         else
         {
@@ -136,15 +138,18 @@ public class ServicioDeMovimientos(
         var (articulo, almacen) = await Comprobaciones(
             articuloId, almacenId, contada, fechaContable, cancelacion, permitirCero: true);
 
-        var hay = await movimientos.Saldo(articulo.Id, almacen.Id, cancelacion: cancelacion);
-        if (contada == hay) return null;
+        var saldo = await movimientos.SaldoDe(articulo.Id, almacen.Id, cancelacion: cancelacion);
+        if (saldo == contada) return null;
 
-        var movimiento = contada < hay
+        var diferencia = contada.Valor - saldo.Valor;
+
+        var movimiento = diferencia < 0m
             ? await Sacar(
-                articulo, almacen, hay - contada, fechaContable, concepto,
+                articulo, almacen, Cantidad.De(-diferencia), fechaContable, concepto,
                 MotivoDeMovimiento.Regularizacion, cancelacion)
             : await MeterLoEncontrado(
-                articulo, almacen, contada - hay, hay, fechaContable, concepto, cancelacion);
+                articulo, almacen, Cantidad.De(diferencia), saldo.Disponible,
+                fechaContable, concepto, cancelacion);
 
         await unidadDeTrabajo.GuardarCambios(cancelacion);
         return movimiento;
@@ -168,12 +173,10 @@ public class ServicioDeMovimientos(
     }
 
     /// <summary>
-    /// Mete la cantidad en las capas. Aqui es donde se separan los dos criterios, y en
-    /// ningun otro sitio: FIFO abre una capa por entrada para poder sacar cada una a su
-    /// coste, y el precio medio las mete todas en la que ya estaba abierta, que es lo que
-    /// hace la media.
+    /// Coloca lo que entra: primero tapa lo que el almacen debiera, y lo que sobre va a las
+    /// capas.
     /// </summary>
-    private async Task MeterEnCapas(
+    private async Task MeterEnAlmacen(
         Articulo articulo,
         Almacen almacen,
         Movimiento entrada,
@@ -182,10 +185,54 @@ public class ServicioDeMovimientos(
         DateOnly fechaContable,
         CancellationToken cancelacion)
     {
+        var quedaCantidad = cantidad;
+        var quedaCoste = coste;
+
+        foreach (var descubierto in
+                 await valoracion.DescubiertosPendientes(articulo.Id, almacen.Id, cancelacion))
+        {
+            if (quedaCantidad.EsCero) break;
+
+            var tapa = quedaCantidad <= descubierto.SinCubrir
+                ? quedaCantidad
+                : descubierto.SinCubrir;
+
+            quedaCoste -= descubierto.Cubrir(tapa);
+            quedaCantidad -= tapa;
+        }
+
+        // Si no queda ni cantidad ni valor, la entrada se ha ido entera en tapar el agujero.
+        // Puede quedar valor sin cantidad, y entonces si se abre capa: ver el comentario de
+        // MeterEnCapas.
+        if (quedaCantidad.EsCero && quedaCoste.EsCero) return;
+
         var abierta = articulo.Metodo is MetodoDeValoracion.PrecioMedio
             ? await valoracion.CapaAbierta(articulo.Id, almacen.Id, cancelacion)
             : null;
 
+        MeterEnCapas(articulo, almacen, entrada, quedaCantidad, quedaCoste, fechaContable, abierta);
+    }
+
+    /// <summary>
+    /// Aqui es donde se separan los dos criterios, y en ningun otro sitio: FIFO abre una capa
+    /// por entrada para poder sacar cada una a su coste, y el precio medio las mete todas en
+    /// la que ya estaba abierta, que es lo que hace la media.
+    /// </summary>
+    /// <remarks>
+    /// La capa puede acabar con cantidad cero y valor distinto de cero cuando una entrada
+    /// tapa justo un descubierto que se habia valorado por encima o por debajo de lo que
+    /// costo de verdad. Esa diferencia es real y tiene que quedar contada en algun sitio,
+    /// aunque no tenga existencias sobre las que apoyarse.
+    /// </remarks>
+    private void MeterEnCapas(
+        Articulo articulo,
+        Almacen almacen,
+        Movimiento entrada,
+        Cantidad cantidad,
+        Importe coste,
+        DateOnly fechaContable,
+        CapaDeExistencias? abierta)
+    {
         if (abierta is null)
             valoracion.Agregar(new CapaDeExistencias(
                 articulo.Id, almacen.Id, entrada.Id, cantidad, coste,
@@ -203,20 +250,25 @@ public class ServicioDeMovimientos(
         MotivoDeMovimiento motivo,
         CancellationToken cancelacion)
     {
-        // Se mira el saldo de hoy y no el de la fecha contable del movimiento: aunque el
-        // albaran sea de la semana pasada, la mercancia sale del almacen ahora.
-        var hay = await movimientos.Saldo(articulo.Id, almacen.Id, cancelacion: cancelacion);
-        if (cantidad > hay)
+        var capas = await valoracion.CapasConExistencias(articulo.Id, almacen.Id, cancelacion);
+        var disponible = capas.Aggregate(Cantidad.Cero, (suma, capa) => suma + capa.CantidadRestante);
+
+        if (cantidad > disponible && !almacen.PermiteDescubierto)
             throw new ReglaDeNegocio(
                 $"No hay bastante {articulo.Referencia} en {almacen.Codigo}: " +
-                $"quedan {hay} {articulo.Unidad.Abreviatura()} y se piden {cantidad}.");
+                $"quedan {disponible} {articulo.Unidad.Abreviatura()} y se piden {cantidad}.");
 
-        var capas = await valoracion.CapasConExistencias(articulo.Id, almacen.Id, cancelacion);
-        var tomas = ConsumoDeCapas.Consumir(capas, cantidad);
+        var deLasCapas = cantidad <= disponible ? cantidad : disponible;
+        var tomas = ConsumoDeCapas.Consumir(capas, deLasCapas);
         var coste = tomas.Aggregate(Importe.Cero, (suma, toma) => suma + toma.Coste);
 
+        var faltan = cantidad - deLasCapas;
+        var costeEnDescubierto = faltan.EsCero
+            ? Importe.Cero
+            : await ValorarLoQueNoHay(articulo, almacen, faltan, cancelacion);
+
         var salida = new Movimiento(
-            articulo.Id, almacen.Id, TipoDeMovimiento.Salida, cantidad, coste,
+            articulo.Id, almacen.Id, TipoDeMovimiento.Salida, cantidad, coste + costeEnDescubierto,
             fechaContable, reloj.GetUtcNow(), concepto, motivo);
 
         movimientos.Agregar(salida);
@@ -224,7 +276,28 @@ public class ServicioDeMovimientos(
         foreach (var toma in tomas)
             valoracion.Agregar(new ConsumoDeCapa(salida.Id, toma.CapaId, toma.Cantidad, toma.Coste));
 
+        if (!faltan.EsCero)
+            valoracion.Agregar(new Descubierto(
+                articulo.Id, almacen.Id, salida.Id, faltan, costeEnDescubierto));
+
         return salida;
+    }
+
+    private async Task<Importe> ValorarLoQueNoHay(
+        Articulo articulo,
+        Almacen almacen,
+        Cantidad faltan,
+        CancellationToken cancelacion)
+    {
+        // Lo que sale sin estar se valora al ultimo precio que se conoce, que es la mejor
+        // suposicion disponible. Si resulta que la entrada que lo tapa costo otra cosa, la
+        // diferencia la absorbe lo que quede en el almacen: lo ya valorado no se revisa.
+        var unitario = await valoracion.UltimoCosteUnitario(articulo.Id, almacen.Id, cancelacion)
+            ?? throw new ReglaDeNegocio(
+                $"Por {almacen.Codigo} no ha pasado nunca {articulo.Referencia}: " +
+                "no hay ningun precio con el que valorar lo que sale sin estar.");
+
+        return Importe.De(unitario * faltan.Valor);
     }
 
     private async Task<Movimiento> MeterLoEncontrado(
@@ -251,7 +324,7 @@ public class ServicioDeMovimientos(
             articulo, almacen, diferencia, coste, fechaContable, concepto,
             MotivoDeMovimiento.Regularizacion);
 
-        await MeterEnCapas(
+        await MeterEnAlmacen(
             articulo, almacen, entrada, diferencia, coste, fechaContable, cancelacion);
 
         return entrada;

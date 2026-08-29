@@ -79,7 +79,7 @@ public class ValoracionEnBaseDeDatosTests(BaseDeDatosDePruebas baseDeDatos)
             Assert.Equal(segunLosMovimientos, enLasCapas);
         }
 
-        Assert.Equal(Cantidad.Cero, await movimientos.Saldo(articulo.Id, almacen.Id));
+        Assert.Equal(Saldo.Cero, await movimientos.SaldoDe(articulo.Id, almacen.Id));
         Assert.Equal(Importe.Cero, await valoracion.ValorDeLasExistencias(articulo.Id, almacen.Id));
     }
 
