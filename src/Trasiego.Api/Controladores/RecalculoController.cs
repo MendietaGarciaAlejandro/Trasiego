@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Trasiego.Contratos;
 using Trasiego.Api.Contratos;
 using Trasiego.Aplicacion.Valoracion;
 
@@ -24,7 +25,7 @@ public class RecalculoController(ServicioDeRecalculo recalculo) : ControllerBase
         [FromQuery] Guid articuloId,
         [FromQuery] Guid almacenId,
         CancellationToken cancelacion) =>
-        ReproduccionVista.De(await recalculo.Comparar(articuloId, almacenId, cancelacion));
+        (await recalculo.Comparar(articuloId, almacenId, cancelacion)).Vista();
 
     /// <summary>
     /// Deshace lo que hay por encima del ultimo cierre y lo reconstruye en orden, corrigiendo
@@ -35,5 +36,5 @@ public class RecalculoController(ServicioDeRecalculo recalculo) : ControllerBase
         [FromQuery] Guid articuloId,
         [FromQuery] Guid almacenId,
         CancellationToken cancelacion) =>
-        ReproduccionVista.De(await recalculo.Aplicar(articuloId, almacenId, cancelacion));
+        (await recalculo.Aplicar(articuloId, almacenId, cancelacion)).Vista();
 }

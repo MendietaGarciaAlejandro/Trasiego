@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Trasiego.Aplicacion\Trasiego.Aplicacion.csproj" />
+    <ProjectReference Include="..\Trasiego.Contratos\Trasiego.Contratos.csproj" />
     <ProjectReference Include="..\Trasiego.Infraestructura\Trasiego.Infraestructura.csproj" />
   </ItemGroup>
 

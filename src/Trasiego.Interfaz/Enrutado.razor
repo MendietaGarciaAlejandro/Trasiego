@@ -1,0 +1,10 @@
+<Router AppAssembly="@GetType().Assembly">
+    <Found Context="ruta">
+        <RouteView RouteData="@ruta" DefaultLayout="@typeof(Marco)" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(Marco)">
+            <p class="vacio">Esa pantalla no existe.</p>
+        </LayoutView>
+    </NotFound>
+</Router>

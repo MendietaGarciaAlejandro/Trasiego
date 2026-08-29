@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Trasiego.Api.Contratos;
+using Trasiego.Contratos;
 using Trasiego.Aplicacion.Movimientos;
 using Trasiego.Dominio.Valores;
 
@@ -17,6 +17,28 @@ public class MovimientosController(ServicioDeMovimientos movimientos) : Controll
         CancellationToken cancelacion) =>
         [.. (await movimientos.Historico(articuloId, almacenId, cancelacion))
             .Select(MovimientoVisto.De)];
+
+    /// <summary>
+    /// La ficha del articulo: cada movimiento con el saldo de cantidad y de valor que dejaba
+    /// detras.
+    /// </summary>
+    [HttpGet("kardex")]
+    public async Task<IReadOnlyList<LineaDeKardex>> Kardex(
+        [FromQuery] Guid articuloId,
+        [FromQuery] Guid almacenId,
+        CancellationToken cancelacion) =>
+        [.. (await movimientos.Kardex(articuloId, almacenId, cancelacion)).Select(linea =>
+            new LineaDeKardex(
+                linea.Movimiento.Id,
+                linea.Movimiento.FechaContable,
+                linea.Movimiento.Tipo,
+                linea.Movimiento.Motivo,
+                linea.Movimiento.Concepto,
+                linea.Movimiento.Cantidad.Valor,
+                linea.Movimiento.Coste.Visible,
+                linea.Cantidad.Valor,
+                linea.Valor.Visible,
+                linea.Movimiento.Retroactivo))];
 
     /// <summary>Lo que hay y lo que vale ahora mismo.</summary>
     [HttpGet("existencias")]

@@ -1,0 +1,113 @@
+@page "/articulos"
+@inject ClienteDeTrasiego trasiego
+
+<h1>Articulos</h1>
+
+<section class="ficha">
+    <h2>Dar de alta</h2>
+
+    <div class="formulario">
+        <label>
+            Referencia
+            <input @bind="referencia" placeholder="TOR-M8-30" />
+        </label>
+        <label>
+            Nombre
+            <input @bind="nombre" placeholder="Tornillo M8 30mm" />
+        </label>
+        <label>
+            Unidad
+            <select @bind="unidad">
+                @foreach (var opcion in Enum.GetValues<UnidadDeMedida>())
+                {
+                    <option value="@opcion">@opcion.EnPlural()</option>
+                }
+            </select>
+        </label>
+        <label>
+            Se valora
+            <select @bind="metodo">
+                <option value="@MetodoDeValoracion.Fifo">Por FIFO</option>
+                <option value="@MetodoDeValoracion.PrecioMedio">A precio medio</option>
+            </select>
+        </label>
+
+        <button class="principal" @onclick="Alta" disabled="@ocupado">Dar de alta</button>
+    </div>
+
+    @if (aviso is not null)
+    {
+        <p class="aviso">@aviso</p>
+    }
+</section>
+
+@if (articulos is null)
+{
+    <p class="vacio">Cargando...</p>
+}
+else if (articulos.Count == 0)
+{
+    <p class="vacio">Todavia no hay articulos.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Referencia</th>
+                <th>Nombre</th>
+                <th>Unidad</th>
+                <th>Se valora</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var articulo in articulos)
+            {
+                <tr>
+                    <td class="clave">@articulo.Referencia</td>
+                    <td>@articulo.Nombre</td>
+                    <td>@articulo.Unidad.EnPlural()</td>
+                    <td>@(articulo.Metodo is MetodoDeValoracion.Fifo ? "FIFO" : "Precio medio")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<ArticuloVisto>? articulos;
+
+    private string referencia = "";
+    private string nombre = "";
+    private UnidadDeMedida unidad = UnidadDeMedida.Unidad;
+    private MetodoDeValoracion metodo = MetodoDeValoracion.Fifo;
+
+    private string? aviso;
+    private bool ocupado;
+
+    protected override Task OnInitializedAsync() => Cargar();
+
+    private async Task Cargar() => articulos = await trasiego.Articulos();
+
+    private async Task Alta()
+    {
+        ocupado = true;
+        aviso = null;
+
+        try
+        {
+            await trasiego.AltaDeArticulo(new AltaDeArticulo(referencia, nombre, unidad, metodo));
+
+            referencia = nombre = "";
+            await Cargar();
+        }
+        catch (FalloDeTrasiego fallo)
+        {
+            aviso = fallo.Message;
+        }
+        finally
+        {
+            ocupado = false;
+        }
+    }
+}

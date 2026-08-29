@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Trasiego.Api.Contratos;
+using Trasiego.Contratos;
 using Trasiego.Dominio.Catalogo;
 using Trasiego.Dominio.Valoracion;
 

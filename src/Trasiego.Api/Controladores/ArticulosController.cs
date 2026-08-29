@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Trasiego.Api.Contratos;
+using Trasiego.Contratos;
 using Trasiego.Aplicacion.Catalogo;
 
 namespace Trasiego.Api.Controladores;

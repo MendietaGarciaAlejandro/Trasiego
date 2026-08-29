@@ -1,0 +1,99 @@
+@page "/almacenes"
+@inject ClienteDeTrasiego trasiego
+
+<h1>Almacenes</h1>
+
+<section class="ficha">
+    <h2>Dar de alta</h2>
+
+    <div class="formulario">
+        <label>
+            Codigo
+            <input @bind="codigo" placeholder="CEN" />
+        </label>
+        <label>
+            Nombre
+            <input @bind="nombre" placeholder="Almacen central" />
+        </label>
+        <label class="casilla">
+            <input type="checkbox" @bind="permiteDescubierto" />
+            Deja servir sin tener genero
+        </label>
+
+        <button class="principal" @onclick="Alta" disabled="@ocupado">Dar de alta</button>
+    </div>
+
+    @if (aviso is not null)
+    {
+        <p class="aviso">@aviso</p>
+    }
+</section>
+
+@if (almacenes is null)
+{
+    <p class="vacio">Cargando...</p>
+}
+else if (almacenes.Count == 0)
+{
+    <p class="vacio">Todavia no hay almacenes.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Codigo</th>
+                <th>Nombre</th>
+                <th>Descubierto</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var almacen in almacenes)
+            {
+                <tr>
+                    <td class="clave">@almacen.Codigo</td>
+                    <td>@almacen.Nombre</td>
+                    <td>@(almacen.PermiteDescubierto ? "Permitido" : "No")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<AlmacenVisto>? almacenes;
+
+    private string codigo = "";
+    private string nombre = "";
+    private bool permiteDescubierto;
+
+    private string? aviso;
+    private bool ocupado;
+
+    protected override Task OnInitializedAsync() => Cargar();
+
+    private async Task Cargar() => almacenes = await trasiego.Almacenes();
+
+    private async Task Alta()
+    {
+        ocupado = true;
+        aviso = null;
+
+        try
+        {
+            await trasiego.AltaDeAlmacen(new AltaDeAlmacen(codigo, nombre, permiteDescubierto));
+
+            codigo = nombre = "";
+            permiteDescubierto = false;
+            await Cargar();
+        }
+        catch (FalloDeTrasiego fallo)
+        {
+            aviso = fallo.Message;
+        }
+        finally
+        {
+            ocupado = false;
+        }
+    }
+}

@@ -1,0 +1,216 @@
+/* Una hoja escrita a mano en vez de una biblioteca de componentes. Esto es una herramienta
+   de almacen: lo que tiene que hacer bien es enseñar muchas filas de numeros y que se lean
+   de un vistazo, no parecerse a una web. */
+
+:root {
+    --fondo: #f4f4f2;
+    --papel: #ffffff;
+    --tinta: #1c1b19;
+    --apagado: #6b6862;
+    --linea: #e0ddd6;
+    --acento: #7a4a2b;
+    --malo: #a8322a;
+    --bueno: #3f6b45;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--fondo);
+    color: var(--tinta);
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+}
+
+/* ---- Armazon ------------------------------------------------------------------- */
+
+.marco { display: flex; height: 100vh; }
+
+.lateral {
+    width: 190px;
+    flex: 0 0 190px;
+    background: #26231f;
+    color: #cfc9c0;
+    display: flex;
+    flex-direction: column;
+    padding: 18px 0;
+}
+
+.marca {
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    color: #fff;
+    padding: 0 20px 20px;
+}
+
+.lateral a {
+    color: #cfc9c0;
+    text-decoration: none;
+    padding: 9px 20px;
+    border-left: 3px solid transparent;
+}
+
+.lateral a:hover { background: #302c27; color: #fff; }
+
+.lateral a.active {
+    background: #302c27;
+    border-left-color: var(--acento);
+    color: #fff;
+}
+
+.pie {
+    margin-top: auto;
+    padding: 0 20px;
+    font-size: 12px;
+    color: #7c766d;
+}
+
+.contenido { flex: 1; overflow-y: auto; padding: 26px 32px 60px; }
+
+/* ---- Textos -------------------------------------------------------------------- */
+
+h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.3px; margin: 0 0 20px; }
+h2 { font-size: 14px; font-weight: 600; margin: 0 0 14px; color: var(--apagado); }
+
+.vacio { color: var(--apagado); padding: 24px 0; }
+.pista { color: var(--apagado); font-size: 12px; margin: 12px 0 0; max-width: 60ch; }
+
+.aviso {
+    margin: 14px 0 0;
+    padding: 10px 12px;
+    background: #fbeceb;
+    border-left: 3px solid var(--malo);
+    color: var(--malo);
+}
+
+/* ---- Fichas y formularios ------------------------------------------------------ */
+
+.ficha, .eleccion {
+    background: var(--papel);
+    border: 1px solid var(--linea);
+    border-radius: 6px;
+    padding: 18px 20px;
+    margin-bottom: 22px;
+}
+
+.eleccion { display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap; }
+
+.formulario {
+    display: flex;
+    gap: 14px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--apagado);
+}
+
+label.ancha { flex: 1; min-width: 200px; }
+
+label.casilla {
+    flex-direction: row;
+    align-items: center;
+    gap: 7px;
+    padding-bottom: 8px;
+}
+
+input, select {
+    font: inherit;
+    color: var(--tinta);
+    background: #fff;
+    border: 1px solid #cfcbc3;
+    border-radius: 4px;
+    padding: 6px 8px;
+    min-width: 150px;
+}
+
+input:focus, select:focus { outline: 2px solid var(--acento); outline-offset: -1px; }
+
+button {
+    font: inherit;
+    border: 1px solid #cfcbc3;
+    background: #fff;
+    border-radius: 4px;
+    padding: 7px 16px;
+    cursor: pointer;
+}
+
+button:hover:not(:disabled) { background: #f0eeea; }
+button:disabled { opacity: 0.5; cursor: default; }
+
+button.principal {
+    background: var(--acento);
+    border-color: var(--acento);
+    color: #fff;
+}
+
+button.principal:hover:not(:disabled) { background: #633b21; }
+
+/* ---- Resumen de existencias ---------------------------------------------------- */
+
+.resumen { display: flex; gap: 28px; margin-left: auto; padding-bottom: 4px; }
+.resumen .rotulo { display: block; font-size: 11px; color: var(--apagado); }
+.resumen strong { font-size: 19px; font-variant-numeric: tabular-nums; }
+
+/* ---- Tablas -------------------------------------------------------------------- */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--papel);
+    border: 1px solid var(--linea);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--apagado);
+    padding: 9px 12px;
+    background: #faf9f7;
+    border-bottom: 1px solid var(--linea);
+}
+
+td { padding: 8px 12px; border-bottom: 1px solid #f0eeea; }
+
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: #faf9f7; }
+
+.clave { font-weight: 600; }
+
+/* Las cifras a la derecha y con los digitos del mismo ancho: es lo que deja comparar una
+   columna de numeros de un vistazo sin ir leyendola. */
+.numero {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.kardex td:nth-child(6), .kardex td:nth-child(7) { font-weight: 600; }
+.kardex th:nth-child(6), .kardex th:nth-child(7) { border-left: 1px solid var(--linea); }
+.kardex td:nth-child(6), .kardex td:nth-child(7) { border-left: 1px solid #f0eeea; }
+
+.negativo { color: var(--malo); }
+
+.marca {
+    margin-left: 7px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--acento);
+    border: 1px solid var(--acento);
+    border-radius: 3px;
+    padding: 1px 5px;
+}

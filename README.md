@@ -20,7 +20,8 @@ Todo lo demás del proyecto está para que esa frase siga siendo verdad.
 - SQL Server 2022 y EF Core 10
 - xUnit; los tests de integración corren sobre LocalDB
 - ASP.NET Core con controllers, y Scalar para probarla a mano (`/scalar` en desarrollo)
-- Más adelante, Blazor: primero escritorio con BlazorWebView, luego web con los mismos componentes
+- Escritorio en WPF alojando un `BlazorWebView`, con las pantallas en una biblioteca aparte
+  para que la web pueda reusarlas tal cual
 
 ## Cómo levantarlo
 
@@ -36,6 +37,12 @@ La cadena de conexión de desarrollo está en `appsettings.Development.json` y a
 `localhost` con autenticación integrada. No la puse en user-secrets como en Camar porque aquí
 no hay ningún secreto que guardar: no lleva usuario ni contraseña. En producción sí saldría
 de user-secrets o de una variable de entorno.
+
+Para el escritorio, con la Api levantada:
+
+```bash
+dotnet run --project src/Trasiego.Escritorio
+```
 
 `dotnet test` ejecuta todo (unos 118 tests). Los de la API levantan la aplicación entera con `WebApplicationFactory` contra la misma base de datos de pruebas. Los tests de dominio no tocan la base de datos y son
 instantáneos; los de integración crean una base de datos suya en LocalDB al empezar y la
@@ -330,6 +337,28 @@ existen para que dentro no se pueda operar mal con ellos; fuera solo estorbaría
 serializados serían un objeto con un campo dentro. Los enums sí viajan por su nombre: un
 `"Fifo"` se entiende leyendo la respuesta y un `1` no, y además ata al cliente al orden en que
 están declarados.
+
+### El escritorio habla con la Api, no con la base de datos
+
+Podría inyectarle los servicios de aplicación directamente y ahorrarse el salto HTTP, pero
+entonces las pantallas sabrían de dónde salen los datos y no valdrían para la versión web. Así
+son las mismas pantallas con el mismo cliente, y lo único que cambia es quién las aloja.
+
+Por eso los contratos viven en su propio proyecto, compartido por la Api y por el cliente. Y
+por eso el cliente lee el `detail` del ProblemDetails y lo enseña tal cual: esos mensajes se
+escribieron pensando en quien los iba a leer, y reescribirlos en la interfaz sería tirarlos.
+
+### El kardex
+
+Es la pantalla principal, y es la invariante leída de arriba abajo en vez de de golpe: cada
+movimiento con el saldo de cantidad y de valor que dejaba detrás. El saldo corrido no se
+guarda en ningún sitio, se saca recorriendo los movimientos en el orden en que cuentan.
+
+La hoja de estilos está escrita a mano en vez de traer una biblioteca de componentes. Esto es
+una herramienta de almacén: lo que tiene que hacer bien es enseñar muchas filas de números y
+que se lean de un vistazo. Las cifras van a la derecha y con los dígitos del mismo ancho, que
+es lo que deja comparar una columna sin ir leyéndola; lo que está en negativo va en rojo, y
+los movimientos que llegaron tarde llevan su marca.
 
 ### El saldo lleva signo y la cantidad no
 

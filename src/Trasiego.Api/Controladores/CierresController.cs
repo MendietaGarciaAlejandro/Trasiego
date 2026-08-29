@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Trasiego.Contratos;
 using Trasiego.Api.Contratos;
 using Trasiego.Aplicacion.Cierres;
 
@@ -25,5 +26,5 @@ public class CierresController(ServicioDeCierres cierres) : ControllerBase
     public async Task<IReadOnlyList<DescuadreVisto>> Comprobar(
         Guid id,
         CancellationToken cancelacion) =>
-        [.. (await cierres.Comprobar(id, cancelacion)).Select(DescuadreVisto.De)];
+        [.. (await cierres.Comprobar(id, cancelacion)).Select(Mapeos.Visto)];
 }

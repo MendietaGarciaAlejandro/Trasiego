@@ -2,7 +2,10 @@
   <Folder Name="/src/">
     <Project Path="src/Trasiego.Api/Trasiego.Api.csproj" />
     <Project Path="src/Trasiego.Aplicacion/Trasiego.Aplicacion.csproj" />
+    <Project Path="src/Trasiego.Contratos/Trasiego.Contratos.csproj" />
     <Project Path="src/Trasiego.Dominio/Trasiego.Dominio.csproj" />
+    <Project Path="src/Trasiego.Escritorio/Trasiego.Escritorio.csproj" />
+    <Project Path="src/Trasiego.Interfaz/Trasiego.Interfaz.csproj" />
     <Project Path="src/Trasiego.Infraestructura/Trasiego.Infraestructura.csproj" />
   </Folder>
   <Folder Name="/tests/">

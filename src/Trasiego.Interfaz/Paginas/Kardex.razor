@@ -1,0 +1,222 @@
+@page "/"
+@inject ClienteDeTrasiego trasiego
+
+<h1>Kardex</h1>
+
+<section class="eleccion">
+    <label>
+        Articulo
+        <select @bind="articuloId" @bind:after="Cargar">
+            <option value="@Guid.Empty">— elige —</option>
+            @foreach (var articulo in articulos)
+            {
+                <option value="@articulo.Id">@articulo.Referencia · @articulo.Nombre</option>
+            }
+        </select>
+    </label>
+
+    <label>
+        Almacen
+        <select @bind="almacenId" @bind:after="Cargar">
+            <option value="@Guid.Empty">— elige —</option>
+            @foreach (var almacen in almacenes)
+            {
+                <option value="@almacen.Id">@almacen.Codigo · @almacen.Nombre</option>
+            }
+        </select>
+    </label>
+
+    @if (existencias is not null)
+    {
+        <div class="resumen">
+            <div>
+                <span class="rotulo">Quedan</span>
+                <strong class="@(existencias.Saldo < 0 ? "negativo" : "")">
+                    @Numero(existencias.Saldo) @unidad
+                </strong>
+            </div>
+            <div>
+                <span class="rotulo">Valen</span>
+                <strong class="@(existencias.Valor < 0 ? "negativo" : "")">
+                    @Dinero(existencias.Valor)
+                </strong>
+            </div>
+        </div>
+    }
+</section>
+
+@if (Elegido)
+{
+    <section class="ficha">
+        <h2>Registrar movimiento</h2>
+
+        <div class="formulario">
+            <label>
+                Fecha contable
+                <input type="date" @bind="fecha" />
+            </label>
+            <label>
+                Cantidad
+                <input type="number" step="0.0001" @bind="cantidad" />
+            </label>
+            <label>
+                Coste de la entrada
+                <input type="number" step="0.01" @bind="coste" />
+            </label>
+            <label class="ancha">
+                Concepto
+                <input @bind="concepto" placeholder="albaran 1042" />
+            </label>
+
+            <button class="principal" @onclick="Entrada" disabled="@ocupado">Entrada</button>
+            <button @onclick="Salida" disabled="@ocupado">Salida</button>
+        </div>
+
+        <p class="pista">
+            El coste es el de la entrada entera, no el de cada unidad. Las salidas no lo
+            llevan: sale de las capas.
+        </p>
+
+        @if (aviso is not null)
+        {
+            <p class="aviso">@aviso</p>
+        }
+    </section>
+}
+
+@if (lineas is null)
+{
+    <p class="vacio">Elige un articulo y un almacen.</p>
+}
+else if (lineas.Count == 0)
+{
+    <p class="vacio">Por ahi no ha pasado nada todavia.</p>
+}
+else
+{
+    <table class="kardex">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Concepto</th>
+                <th class="numero">Entra</th>
+                <th class="numero">Sale</th>
+                <th class="numero">Coste</th>
+                <th class="numero">Saldo</th>
+                <th class="numero">Valor</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var linea in lineas)
+            {
+                <tr>
+                    <td>@linea.FechaContable.ToString("dd/MM/yyyy")</td>
+                    <td>
+                        @Titulo(linea)
+                        @if (linea.Retroactivo)
+                        {
+                            <span class="marca" title="Llego con fecha anterior a lo que ya habia">tarde</span>
+                        }
+                    </td>
+                    <td class="numero">
+                        @(linea.Tipo is TipoDeMovimiento.Entrada ? Numero(linea.Cantidad) : "")
+                    </td>
+                    <td class="numero">
+                        @(linea.Tipo is TipoDeMovimiento.Salida ? Numero(linea.Cantidad) : "")
+                    </td>
+                    <td class="numero">@Dinero(linea.Coste)</td>
+                    <td class="numero @(linea.SaldoCantidad < 0 ? "negativo" : "")">
+                        @Numero(linea.SaldoCantidad)
+                    </td>
+                    <td class="numero @(linea.SaldoValor < 0 ? "negativo" : "")">
+                        @Dinero(linea.SaldoValor)
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<ArticuloVisto> articulos = [];
+    private IReadOnlyList<AlmacenVisto> almacenes = [];
+    private IReadOnlyList<LineaDeKardex>? lineas;
+    private ExistenciasVistas? existencias;
+
+    private Guid articuloId;
+    private Guid almacenId;
+
+    private DateOnly fecha = DateOnly.FromDateTime(DateTime.Now);
+    private decimal cantidad = 1;
+    private decimal coste;
+    private string concepto = "";
+
+    private string? aviso;
+    private bool ocupado;
+
+    private bool Elegido => articuloId != Guid.Empty && almacenId != Guid.Empty;
+
+    private string unidad => articulos
+        .FirstOrDefault(articulo => articulo.Id == articuloId)?.Unidad.Abreviatura() ?? "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        articulos = await trasiego.Articulos();
+        almacenes = await trasiego.Almacenes();
+    }
+
+    private async Task Cargar()
+    {
+        if (!Elegido)
+        {
+            lineas = null;
+            existencias = null;
+            return;
+        }
+
+        lineas = await trasiego.Kardex(articuloId, almacenId);
+        existencias = await trasiego.Existencias(articuloId, almacenId);
+    }
+
+    private Task Entrada() => Registrar(() => trasiego.Entrada(
+        new EntradaPedida(articuloId, almacenId, cantidad, coste, fecha, Concepto())));
+
+    private Task Salida() => Registrar(() => trasiego.Salida(
+        new SalidaPedida(articuloId, almacenId, cantidad, fecha, Concepto())));
+
+    private async Task Registrar(Func<Task> movimiento)
+    {
+        ocupado = true;
+        aviso = null;
+
+        try
+        {
+            await movimiento();
+            concepto = "";
+            await Cargar();
+        }
+        catch (FalloDeTrasiego fallo)
+        {
+            aviso = fallo.Message;
+        }
+        finally
+        {
+            ocupado = false;
+        }
+    }
+
+    private string? Concepto() => string.IsNullOrWhiteSpace(concepto) ? null : concepto;
+
+    private static string Titulo(LineaDeKardex linea) => linea.Concepto ?? linea.Motivo switch
+    {
+        MotivoDeMovimiento.Regularizacion => "Regularizacion por recuento",
+        MotivoDeMovimiento.Devolucion => "Devolucion",
+        _ => linea.Tipo is TipoDeMovimiento.Entrada ? "Entrada" : "Salida",
+    };
+
+    // Cantidades con los decimales que hagan falta y dinero siempre con dos, que es como se
+    // leen en un papel.
+    private static string Numero(decimal valor) => valor.ToString("#,##0.####");
+
+    private static string Dinero(decimal valor) => valor.ToString("#,##0.00 €");
+}

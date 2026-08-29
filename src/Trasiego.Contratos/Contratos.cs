@@ -1,11 +1,11 @@
-using Trasiego.Aplicacion.Cierres;
 using Trasiego.Dominio.Almacenes;
 using Trasiego.Dominio.Catalogo;
 using Trasiego.Dominio.Cierres;
 using Trasiego.Dominio.Movimientos;
 using Trasiego.Dominio.Valoracion;
+using Trasiego.Dominio.Valores;
 
-namespace Trasiego.Api.Contratos;
+namespace Trasiego.Contratos;
 
 // Lo que entra y lo que sale de la Api va en decimal y no en Cantidad ni Importe. Esos tipos
 // existen para que dentro no se pueda operar mal con ellos; fuera solo estorbarian, porque
@@ -103,6 +103,22 @@ public record MovimientoVisto(
 
 public record ExistenciasVistas(Guid ArticuloId, Guid AlmacenId, decimal Saldo, decimal Valor);
 
+/// <summary>
+/// Una linea del kardex: el movimiento y como quedaba el almacen despues de el, en cantidad
+/// y en dinero.
+/// </summary>
+public record LineaDeKardex(
+    Guid MovimientoId,
+    DateOnly FechaContable,
+    TipoDeMovimiento Tipo,
+    MotivoDeMovimiento Motivo,
+    string? Concepto,
+    decimal Cantidad,
+    decimal Coste,
+    decimal SaldoCantidad,
+    decimal SaldoValor,
+    bool Retroactivo);
+
 // ---- Cierres y recalculo ------------------------------------------------------------
 
 public record CierrePedido(Guid AlmacenId, DateOnly Hasta, string? Concepto = null);
@@ -125,10 +141,6 @@ public record DescuadreVisto(
     decimal ValorDeclarado,
     decimal ValorAhora)
 {
-    public static DescuadreVisto De(Descuadre descuadre) => new(
-        descuadre.ArticuloId,
-        descuadre.CantidadDeclarada.Valor, descuadre.CantidadAhora.Valor,
-        descuadre.ValorDeclarado.Visible, descuadre.ValorAhora.Visible);
 }
 
 public record SalidaDescuadrada(
@@ -142,12 +154,4 @@ public record ReproduccionVista(
     decimal Valor,
     IReadOnlyList<SalidaDescuadrada> Descuadradas)
 {
-    public static ReproduccionVista De(Reproduccion reproduccion) => new(
-        reproduccion.Cantidad.Valor,
-        reproduccion.Valor.Visible,
-        [.. reproduccion.Descuadradas.Select(salida => new SalidaDescuadrada(
-            salida.MovimientoId,
-            salida.Registrado.Visible,
-            salida.Reproducido.Visible,
-            salida.Diferencia.Visible))]);
 }

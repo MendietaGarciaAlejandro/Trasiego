@@ -2,13 +2,13 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
-using Trasiego.Api.Contratos;
 using Trasiego.Api.Errores;
 using Trasiego.Aplicacion.Almacenes;
 using Trasiego.Aplicacion.Catalogo;
 using Trasiego.Aplicacion.Cierres;
 using Trasiego.Aplicacion.Movimientos;
 using Trasiego.Aplicacion.Valoracion;
+using Trasiego.Contratos;
 using Trasiego.Infraestructura;
 using Trasiego.Infraestructura.Persistencia;
 

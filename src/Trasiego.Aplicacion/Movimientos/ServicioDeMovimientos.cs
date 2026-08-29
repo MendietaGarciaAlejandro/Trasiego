@@ -8,6 +8,13 @@ using Trasiego.Dominio.Valores;
 
 namespace Trasiego.Aplicacion.Movimientos;
 
+/// <summary>
+/// Un movimiento y como quedaba el almacen justo despues de el. El saldo corrido no se
+/// guarda en ningun sitio: se saca recorriendo los movimientos en el orden en que cuentan,
+/// que es la invariante leida de arriba abajo en vez de de golpe.
+/// </summary>
+public record LineaDeHistorico(Movimiento Movimiento, Saldo Cantidad, Importe Valor);
+
 public class ServicioDeMovimientos(
     IRepositorioDeArticulos articulos,
     IRepositorioDeAlmacenes almacenes,
@@ -218,6 +225,32 @@ public class ServicioDeMovimientos(
         Guid almacenId,
         CancellationToken cancelacion = default) =>
         movimientos.Listar(articuloId, almacenId, null, false, cancelacion);
+
+    /// <summary>
+    /// La ficha del articulo en un almacen: cada movimiento con el saldo de cantidad y de
+    /// valor que dejaba detras.
+    /// </summary>
+    public async Task<IReadOnlyList<LineaDeHistorico>> Kardex(
+        Guid articuloId,
+        Guid almacenId,
+        CancellationToken cancelacion = default)
+    {
+        var cantidad = 0m;
+        var valor = Importe.Cero;
+        var lineas = new List<LineaDeHistorico>();
+
+        foreach (var movimiento in await Historico(articuloId, almacenId, cancelacion))
+        {
+            var entra = movimiento.Tipo is TipoDeMovimiento.Entrada;
+
+            cantidad += entra ? movimiento.Cantidad.Valor : -movimiento.Cantidad.Valor;
+            valor = entra ? valor + movimiento.Coste : valor - movimiento.Coste;
+
+            lineas.Add(new LineaDeHistorico(movimiento, Saldo.De(cantidad), valor));
+        }
+
+        return lineas;
+    }
 
     /// <summary>Lo que hay y lo que vale.</summary>
     public async Task<(Saldo Saldo, Importe Valor)> Existencias(
