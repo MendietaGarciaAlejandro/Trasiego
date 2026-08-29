@@ -6,6 +6,7 @@
     <Project Path="src/Trasiego.Dominio/Trasiego.Dominio.csproj" />
     <Project Path="src/Trasiego.Escritorio/Trasiego.Escritorio.csproj" />
     <Project Path="src/Trasiego.Interfaz/Trasiego.Interfaz.csproj" />
+    <Project Path="src/Trasiego.Web/Trasiego.Web.csproj" />
     <Project Path="src/Trasiego.Infraestructura/Trasiego.Infraestructura.csproj" />
   </Folder>
   <Folder Name="/tests/">

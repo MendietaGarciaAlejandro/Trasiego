@@ -45,6 +45,12 @@ var app = constructor.Build();
 
 app.UseExceptionHandler();
 
+// La Api sirve tambien el cliente web. Es la misma aplicacion de siempre: las pantallas
+// hablan con la Api por HTTP igual que en el escritorio, solo que aqui las aloja el
+// navegador y no un WebView. Al ser el mismo origen no hace falta CORS.
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -66,6 +72,10 @@ app.MapGet("/salud", async Task<Results<Ok<EstadoDeSalud>, ProblemHttpResult>> (
         : TypedResults.Problem("No se llega a la base de datos.", statusCode: 503));
 
 app.MapControllers();
+
+// Lo que no sea la Api ni el documento de OpenAPI es una ruta del cliente web, y de eso ya
+// se encarga el enrutado de Blazor dentro del navegador.
+app.MapFallbackToFile("index.html");
 
 app.Run();
 

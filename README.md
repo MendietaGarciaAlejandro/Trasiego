@@ -20,8 +20,8 @@ Todo lo demás del proyecto está para que esa frase siga siendo verdad.
 - SQL Server 2022 y EF Core 10
 - xUnit; los tests de integración corren sobre LocalDB
 - ASP.NET Core con controllers, y Scalar para probarla a mano (`/scalar` en desarrollo)
-- Escritorio en WPF alojando un `BlazorWebView`, con las pantallas en una biblioteca aparte
-  para que la web pueda reusarlas tal cual
+- Las pantallas en Blazor, en una biblioteca aparte, con dos hosts: WPF con `BlazorWebView`
+  para el escritorio y WebAssembly para la web
 
 ## Cómo levantarlo
 
@@ -32,6 +32,8 @@ dotnet tool restore
 dotnet ef database update --project src/Trasiego.Infraestructura --startup-project src/Trasiego.Api
 dotnet run --project src/Trasiego.Api
 ```
+
+Eso levanta la Api y, en la misma dirección, el cliente web: `http://localhost:5248`.
 
 La cadena de conexión de desarrollo está en `appsettings.Development.json` y apunta a
 `localhost` con autenticación integrada. No la puse en user-secrets como en Camar porque aquí
@@ -338,11 +340,17 @@ serializados serían un objeto con un campo dentro. Los enums sí viajan por su 
 `"Fifo"` se entiende leyendo la respuesta y un `1` no, y además ata al cliente al orden en que
 están declarados.
 
-### El escritorio habla con la Api, no con la base de datos
+### Los clientes hablan con la Api, no con la base de datos
 
-Podría inyectarle los servicios de aplicación directamente y ahorrarse el salto HTTP, pero
-entonces las pantallas sabrían de dónde salen los datos y no valdrían para la versión web. Así
-son las mismas pantallas con el mismo cliente, y lo único que cambia es quién las aloja.
+Al escritorio podría inyectarle los servicios de aplicación directamente y ahorrarse el salto
+HTTP, pero entonces las pantallas sabrían de dónde salen los datos y no valdrían para la web.
+
+Esa apuesta se cobró en la última tanda: la versión web son **las mismas pantallas y el mismo
+cliente**, y lo único que cambia es quién las aloja — un `BlazorWebView` dentro de una ventana
+de WPF, o el navegador. No hubo que tocar ni una pantalla.
+
+La sirve la propia Api, así que es el mismo origen y no hace falta CORS. Un solo comando
+levanta las dos cosas.
 
 Por eso los contratos viven en su propio proyecto, compartido por la Api y por el cliente. Y
 por eso el cliente lee el `detail` del ProblemDetails y lo enseña tal cual: esos mensajes se
