@@ -126,6 +126,9 @@ h2.titulo { margin: 26px 0 12px; color: var(--tinta); font-size: 16px; }
 .vacio { color: var(--apagado); padding: 24px 0; }
 .pista { color: var(--apagado); font-size: 12px; margin: 12px 0 0; max-width: 60ch; }
 
+/* Cuando la nota va suelta encima de una tabla, y no dentro de una ficha, se queda pegada. */
+.pista + table { margin-top: 18px; }
+
 .aviso {
     margin: 14px 0 0;
     padding: 10px 12px;

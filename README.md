@@ -16,6 +16,35 @@ De ahí sale la única regla que no se puede romper nunca:
 
 Todo lo demás del proyecto está para que esa frase siga siendo verdad.
 
+## Cómo se ve
+
+Al arrancar en desarrollo se siembra un almacén que ya ha vivido un par de meses, así que
+esto es lo que sale sin teclear nada.
+
+![Ficha de artículo](docs/kardex.png)
+
+La ficha de un artículo. Los tornillos entraron a 2 € y luego a 2,60: la salida del 31 de
+julio se come lo que quedaba de la primera entrada y sigue por la segunda, y por eso 90
+unidades cuestan 192 € y no 234. El albarán del 9 de agosto llegó con fecha anterior a
+movimientos que ya estaban registrados, y va marcado como **tarde**. Cada línea dice quién la
+registró y de qué papel salió.
+
+![Lotes y caducidades](docs/lotes.png)
+
+Lo que hay repartido por lotes, en el orden en que va a ir saliendo: primero lo que antes
+caduca. Del primer lote quedaron cuatro botes sin servir y ya han vencido; siguen contando y
+siguen valiendo dinero, pero no se sirven.
+
+![Valoración a fecha](docs/valoracion.png)
+
+Lo que valía un almacén un día concreto. No reconstruye nada: como cada movimiento lleva su
+coste, esto es sumar movimientos hasta esa fecha.
+
+![Documentos](docs/documentos.png)
+
+Un albarán con sus líneas. Mientras es borrador no ha movido nada; al registrarlo genera sus
+movimientos de una vez, o no genera ninguno.
+
 ## Stack
 
 - .NET 10, capas separadas (Dominio, Aplicación, Infraestructura, Api)
@@ -47,12 +76,19 @@ dotnet run --project src/Trasiego.Escritorio
 En desarrollo se siembran dos usuarios con los que entrar, los dos con la contraseña
 `trasiego-demo-2026`: `encargada@trasiego.test` (responsable) y `operario@trasiego.test`.
 
+Y se siembra también un almacén que ya ha vivido un par de meses, que es lo que se ve en las
+capturas de arriba: cuatro artículos, tres almacenes, capas a dos precios, un traspaso, una
+devolución, un almacén que sirvió sin tener género, tres lotes con caducidades escalonadas, un
+albarán y un cierre. Se registra todo por los servicios de siempre y no metiendo filas a mano,
+porque sembrar por debajo dejaría las capas y los consumos valiendo lo que yo creo que
+valdrían en vez de lo que valen.
+
 La cadena de conexión está en `appsettings.Development.json` y apunta a `localhost` con
 autenticación integrada: ahí no hay ningún secreto que guardar, porque no lleva usuario ni
 contraseña. La clave de firma sí, y por eso va en user-secrets; sin ella la Api se niega a
 arrancar y dice el comando.
 
-`dotnet test` ejecuta todo, unos 176 tests. Los de dominio no tocan la base de datos y son
+`dotnet test` ejecuta todo, unos 179 tests. Los de dominio no tocan la base de datos y son
 instantáneos; los de integración crean una base suya en LocalDB al empezar y la borran al
 terminar, y los de la Api levantan la aplicación entera con `WebApplicationFactory`.
 
@@ -601,7 +637,7 @@ número, su caducidad y la parte del coste que le toca. La mercancía llega repa
 
 ## Por dónde ha ido
 
-El plan eran doce fases, y después salieron ocho cosas más de las que fueron apareciendo por
+El plan eran doce fases, y después salieron nueve cosas más de las que fueron apareciendo por
 el camino.
 
 1. **Andamiaje.** Capas, SQL Server, `Cantidad` e `Importe` con sus reglas de redondeo.
@@ -628,6 +664,7 @@ el camino.
     push.
 20. **Lotes y caducidades.** FEFO, lo caducado que no se sirve, y los lotes cruzando los
     traspasos.
+21. **Que se vea.** Un almacén de demostración sembrado al arrancar, y capturas.
 
 De todo eso, las fases 3 a 9 son el proyecto de verdad: lo demás es lo que hace falta para
 poder verlo.

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Trasiego.Dominio.Almacenes;
 using Trasiego.Dominio.Catalogo;
 using Trasiego.Infraestructura.Persistencia.Repositorios;
@@ -45,16 +45,19 @@ public class CatalogoEnBaseDeDatosTests(BaseDeDatosDePruebas baseDeDatos)
         await using var contexto = baseDeDatos.Contexto();
         var repositorio = new RepositorioDeAlmacenes(contexto);
 
-        await repositorio.Alta(new Almacen("TDA", "Tienda"));
+        // Codigos propios y no "TDA" u "OBR": la base de datos es la misma para toda la
+        // coleccion, y el arranque en desarrollo siembra un almacen de demostracion que ya
+        // usa esos dos.
+        await repositorio.Alta(new Almacen("BAJ-A", "Almacen que sigue abierto"));
 
-        var deBaja = new Almacen("OBR", "Obra terminada");
+        var deBaja = new Almacen("BAJ-B", "Almacen que se cerro");
         deBaja.DarDeBaja();
         await repositorio.Alta(deBaja);
 
         var activos = await repositorio.Listar(incluirBajas: false);
         var todos = await repositorio.Listar(incluirBajas: true);
 
-        Assert.DoesNotContain(activos, a => a.Codigo == "OBR");
-        Assert.Contains(todos, a => a.Codigo == "OBR");
+        Assert.DoesNotContain(activos, a => a.Codigo == "BAJ-B");
+        Assert.Contains(todos, a => a.Codigo == "BAJ-B");
     }
 }

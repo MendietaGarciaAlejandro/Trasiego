@@ -142,9 +142,16 @@
                         @if (abierto.Tipo is TipoDeDocumento.Recepcion)
                         {
                             <th class="numero">Coste</th>
-                            <th>Lote</th>
+
+                            @if (ConLote)
+                            {
+                                <th>Lote</th>
+                            }
                         }
-                        <th></th>
+                        @if (abierto.Estado is EstadoDeDocumento.Borrador)
+                        {
+                            <th></th>
+                        }
                     </tr>
                 </thead>
                 <tbody>
@@ -156,21 +163,25 @@
                             @if (abierto.Tipo is TipoDeDocumento.Recepcion)
                             {
                                 <td class="numero">@Dinero(linea.Coste)</td>
-                                <td>
-                                    @(linea.Lote ?? "—")
-                                    @if (linea.Caducidad is { } cuando)
-                                    {
-                                        <span class="papel">@cuando.ToString("dd/MM/yyyy")</span>
-                                    }
-                                </td>
-                            }
-                            <td class="acciones">
-                                @if (abierto.Estado is EstadoDeDocumento.Borrador)
+
+                                @if (ConLote)
                                 {
+                                    <td>
+                                        @linea.Lote
+                                        @if (linea.Caducidad is { } cuando)
+                                        {
+                                            <span class="papel">@cuando.ToString("dd/MM/yyyy")</span>
+                                        }
+                                    </td>
+                                }
+                            }
+                            @if (abierto.Estado is EstadoDeDocumento.Borrador)
+                            {
+                                <td class="acciones">
                                     <button @onclick="() => QuitarLinea(linea.Id)"
                                             disabled="@ocupado">Quitar</button>
-                                }
-                            </td>
+                                </td>
+                            }
                         </tr>
                     }
                 </tbody>
@@ -276,6 +287,10 @@ else
 
         numero = concepto = "";
     });
+
+    // La columna de lote solo cuando alguna linea lo lleva: en un albaran de material que no
+    // se lotea seria una columna de rayas.
+    private bool ConLote => abierto?.Lineas.Any(linea => linea.Lote is not null) ?? false;
 
     private bool PorLotes => articulos
         .FirstOrDefault(articulo => articulo.Id == articuloId)?.LlevaLotes ?? false;
