@@ -1,4 +1,4 @@
-using Trasiego.Dominio.Acceso;
+﻿using Trasiego.Dominio.Acceso;
 
 namespace Trasiego.Aplicacion.Abstracciones;
 
@@ -9,6 +9,11 @@ public interface IRepositorioDeUsuarios
     Task<Usuario?> PorCorreo(string correo, CancellationToken cancelacion = default);
 
     Task<IReadOnlyList<Usuario>> Listar(CancellationToken cancelacion = default);
+
+    /// <summary>Los nombres de unos cuantos, para poder enseñarlos junto a lo que hicieron.</summary>
+    Task<IReadOnlyDictionary<Guid, string>> NombresDe(
+        IEnumerable<Guid> ids,
+        CancellationToken cancelacion = default);
 
     Task Alta(Usuario usuario, CancellationToken cancelacion = default);
 }

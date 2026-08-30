@@ -1,5 +1,6 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Trasiego.Dominio.Acceso;
 using Trasiego.Dominio.Almacenes;
 using Trasiego.Dominio.Catalogo;
 using Trasiego.Dominio.Movimientos;
@@ -47,9 +48,17 @@ public class ConfiguracionDeMovimiento : IEntityTypeConfiguration<Movimiento>
             .HasForeignKey(m => m.AlmacenId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Restrict, como en articulos y almacenes: a un usuario se le da de baja, no se le
+        // borra, y menos aun si tiene movimientos colgando de su nombre.
+        movimiento.HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(m => m.UsuarioId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // El saldo siempre se pregunta por articulo y almacen, y muchas veces acotado a una
         // fecha, asi que el indice va en ese orden.
         movimiento.HasIndex(m => new { m.ArticuloId, m.AlmacenId, m.FechaContable });
         movimiento.HasIndex(m => m.DocumentoId);
+        movimiento.HasIndex(m => m.UsuarioId);
     }
 }

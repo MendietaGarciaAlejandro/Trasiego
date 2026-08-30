@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Trasiego.Dominio.Almacenes;
 using Trasiego.Dominio.Comun;
 using Trasiego.Dominio.Documentos;
@@ -132,7 +132,7 @@ public class DocumentosTests(BaseDeDatosDePruebas baseDeDatos)
     {
         await using var contexto = baseDeDatos.Contexto();
         var (articulo, origen) = await Escenario.Catalogo(contexto);
-        var destino = await OtroAlmacen(contexto);
+        var destino = await Escenario.OtroAlmacen(contexto);
         var documentos = Escenario.Documentos(contexto);
         var servicio = Escenario.Servicio(contexto);
 
@@ -217,12 +217,4 @@ public class DocumentosTests(BaseDeDatosDePruebas baseDeDatos)
     private static string Numero(string prefijo) =>
         $"{prefijo}-{Interlocked.Increment(ref _siguiente)}";
 
-    private static async Task<Almacen> OtroAlmacen(ContextoDeTrasiego contexto)
-    {
-        var numero = Interlocked.Increment(ref _siguiente);
-        var almacen = new Almacen($"D{numero}", $"Almacen de destino {numero}");
-
-        await new RepositorioDeAlmacenes(contexto).Alta(almacen);
-        return almacen;
-    }
 }

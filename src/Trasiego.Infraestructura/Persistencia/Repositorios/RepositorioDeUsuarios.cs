@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Trasiego.Aplicacion.Abstracciones;
 using Trasiego.Dominio.Acceso;
 
@@ -14,6 +14,13 @@ public class RepositorioDeUsuarios(ContextoDeTrasiego contexto) : IRepositorioDe
 
     public async Task<IReadOnlyList<Usuario>> Listar(CancellationToken cancelacion = default) =>
         await contexto.Usuarios.OrderBy(u => u.Correo).ToListAsync(cancelacion);
+
+    public async Task<IReadOnlyDictionary<Guid, string>> NombresDe(
+        IEnumerable<Guid> ids,
+        CancellationToken cancelacion = default) =>
+        await contexto.Usuarios
+            .Where(u => ids.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Nombre, cancelacion);
 
     public async Task Alta(Usuario usuario, CancellationToken cancelacion = default)
     {

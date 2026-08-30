@@ -1,4 +1,4 @@
-using Trasiego.Dominio.Acceso;
+﻿using Trasiego.Dominio.Acceso;
 using Trasiego.Dominio.Almacenes;
 using Trasiego.Dominio.Catalogo;
 using Trasiego.Dominio.Documentos;
@@ -152,14 +152,16 @@ public record MovimientoVisto(
     DateTimeOffset MomentoDeRegistro,
     string? Concepto,
     bool Retroactivo,
-    Guid? DocumentoId)
+    Guid? DocumentoId,
+    Guid? UsuarioId)
 {
     public static MovimientoVisto De(Movimiento movimiento) => new(
         movimiento.Id, movimiento.ArticuloId, movimiento.AlmacenId,
         movimiento.Tipo, movimiento.Motivo,
         movimiento.Cantidad.Valor, movimiento.Coste.Visible,
         movimiento.FechaContable, movimiento.MomentoDeRegistro,
-        movimiento.Concepto, movimiento.Retroactivo, movimiento.DocumentoId);
+        movimiento.Concepto, movimiento.Retroactivo, movimiento.DocumentoId,
+        movimiento.UsuarioId);
 }
 
 public record ExistenciasVistas(Guid ArticuloId, Guid AlmacenId, decimal Saldo, decimal Valor);
@@ -179,7 +181,8 @@ public record LineaDeKardex(
     decimal SaldoCantidad,
     decimal SaldoValor,
     bool Retroactivo,
-    string? Documento);
+    string? Documento,
+    string? Usuario);
 
 // ---- Cierres y recalculo ------------------------------------------------------------
 

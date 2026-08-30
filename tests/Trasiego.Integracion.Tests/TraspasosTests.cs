@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Trasiego.Dominio.Almacenes;
 using Trasiego.Dominio.Comun;
 using Trasiego.Dominio.Movimientos;
@@ -11,14 +11,12 @@ namespace Trasiego.Integracion.Tests;
 [Collection(nameof(ColeccionConBaseDeDatos))]
 public class TraspasosTests(BaseDeDatosDePruebas baseDeDatos)
 {
-    private static int _siguiente;
-
     [Fact]
     public async Task Lo_que_sale_de_un_almacen_entra_en_el_otro_al_mismo_coste()
     {
         await using var contexto = baseDeDatos.Contexto();
         var (articulo, origen) = await Escenario.Catalogo(contexto);
-        var destino = await OtroAlmacen(contexto);
+        var destino = await Escenario.OtroAlmacen(contexto);
         var servicio = Escenario.Servicio(contexto);
 
         // Diez a 1 € y diez a 9 €. Lo que se traspase sale a 1 €, no a la media.
@@ -39,7 +37,7 @@ public class TraspasosTests(BaseDeDatosDePruebas baseDeDatos)
     {
         await using var contexto = baseDeDatos.Contexto();
         var (articulo, origen) = await Escenario.Catalogo(contexto);
-        var destino = await OtroAlmacen(contexto);
+        var destino = await Escenario.OtroAlmacen(contexto);
         var servicio = Escenario.Servicio(contexto);
         var valoracion = new RepositorioDeValoracion(contexto);
 
@@ -62,7 +60,7 @@ public class TraspasosTests(BaseDeDatosDePruebas baseDeDatos)
     {
         await using var contexto = baseDeDatos.Contexto();
         var (articulo, origen) = await Escenario.Catalogo(contexto);
-        var destino = await OtroAlmacen(contexto);
+        var destino = await Escenario.OtroAlmacen(contexto);
         var servicio = Escenario.Servicio(contexto);
 
         await servicio.RegistrarEntrada(
@@ -96,7 +94,7 @@ public class TraspasosTests(BaseDeDatosDePruebas baseDeDatos)
     {
         await using var contexto = baseDeDatos.Contexto();
         var (articulo, origen) = await Escenario.Catalogo(contexto);
-        var destino = await OtroAlmacen(contexto);
+        var destino = await Escenario.OtroAlmacen(contexto);
         var servicio = Escenario.Servicio(contexto);
         var movimientos = new RepositorioDeMovimientos(contexto);
 
@@ -116,7 +114,7 @@ public class TraspasosTests(BaseDeDatosDePruebas baseDeDatos)
     {
         await using var contexto = baseDeDatos.Contexto();
         var (articulo, origen) = await Escenario.Catalogo(contexto);
-        var destino = await OtroAlmacen(contexto);
+        var destino = await Escenario.OtroAlmacen(contexto);
         var servicio = Escenario.Servicio(contexto);
 
         await servicio.RegistrarEntrada(
@@ -137,7 +135,7 @@ public class TraspasosTests(BaseDeDatosDePruebas baseDeDatos)
     {
         await using var contexto = baseDeDatos.Contexto();
         var (articulo, origen) = await Escenario.Catalogo(contexto);
-        var destino = await OtroAlmacen(contexto);
+        var destino = await Escenario.OtroAlmacen(contexto);
         var servicio = Escenario.Servicio(contexto);
 
         // Entra caro, se traspasan cuatro a 8 € la unidad.
@@ -172,7 +170,7 @@ public class TraspasosTests(BaseDeDatosDePruebas baseDeDatos)
     {
         await using var contexto = baseDeDatos.Contexto();
         var (articulo, origen) = await Escenario.Catalogo(contexto);
-        var destino = await OtroAlmacen(contexto);
+        var destino = await Escenario.OtroAlmacen(contexto);
         var servicio = Escenario.Servicio(contexto);
 
         // Numeros que no caen redondos, para que el redondeo tenga donde acumularse.
@@ -196,12 +194,4 @@ public class TraspasosTests(BaseDeDatosDePruebas baseDeDatos)
                 await valoracion.ValorDeLasExistencias(articulo.Id, almacen));
     }
 
-    private static async Task<Almacen> OtroAlmacen(ContextoDeTrasiego contexto)
-    {
-        var numero = Interlocked.Increment(ref _siguiente);
-        var almacen = new Almacen($"T{numero}", $"Almacen de destino {numero}");
-
-        await new RepositorioDeAlmacenes(contexto).Alta(almacen);
-        return almacen;
-    }
 }

@@ -1,4 +1,4 @@
-using Trasiego.Aplicacion.Abstracciones;
+﻿using Trasiego.Aplicacion.Abstracciones;
 using Trasiego.Dominio.Almacenes;
 using Trasiego.Dominio.Catalogo;
 using Trasiego.Dominio.Comun;
@@ -18,7 +18,8 @@ public record LineaDeHistorico(
     Movimiento Movimiento,
     Saldo Cantidad,
     Importe Valor,
-    string? Documento);
+    string? Documento,
+    string? Usuario);
 
 /// <summary>Las dos mitades de un traspaso.</summary>
 public record Traspaso(Movimiento Salida, Movimiento Entrada);
@@ -30,7 +31,9 @@ public class ServicioDeMovimientos(
     IRepositorioDeValoracion valoracion,
     IRepositorioDeCierres cierres,
     IRepositorioDeDocumentos documentos,
+    IRepositorioDeUsuarios usuarios,
     IUnidadDeTrabajo unidadDeTrabajo,
+    IQuienRegistra quienRegistra,
     TimeProvider reloj)
 {
     /// <summary>
@@ -156,7 +159,8 @@ public class ServicioDeMovimientos(
         var devolucion = new Movimiento(
             articulo.Id, almacen.Id, TipoDeMovimiento.Entrada, cantidad, coste,
             fechaContable, reloj.GetUtcNow(), concepto,
-            MotivoDeMovimiento.Devolucion, salidaId, retroactivo);
+            MotivoDeMovimiento.Devolucion, salidaId, retroactivo,
+            usuarioId: quienRegistra.Id);
 
         movimientos.Agregar(devolucion);
 
@@ -249,7 +253,8 @@ public class ServicioDeMovimientos(
         var entrada = new Movimiento(
             articulo.Id, destino.Id, TipoDeMovimiento.Entrada, cantidad, salida.Coste,
             fechaContable, reloj.GetUtcNow(), concepto,
-            MotivoDeMovimiento.Traspaso, salida.Id, entraTarde, documentoId);
+            MotivoDeMovimiento.Traspaso, salida.Id, entraTarde, documentoId,
+            quienRegistra.Id);
 
         movimientos.Agregar(entrada);
 
@@ -400,6 +405,10 @@ public class ServicioDeMovimientos(
             historico.Where(m => m.DocumentoId is not null).Select(m => m.DocumentoId!.Value),
             cancelacion);
 
+        var quienes = await usuarios.NombresDe(
+            historico.Where(m => m.UsuarioId is not null).Select(m => m.UsuarioId!.Value),
+            cancelacion);
+
         var cantidad = 0m;
         var valor = Importe.Cero;
         var lineas = new List<LineaDeHistorico>();
@@ -415,7 +424,12 @@ public class ServicioDeMovimientos(
                 ? numero
                 : null;
 
-            lineas.Add(new LineaDeHistorico(movimiento, Saldo.De(cantidad), valor, papel));
+            var quien = movimiento.UsuarioId is { } usuarioId
+                     && quienes.TryGetValue(usuarioId, out var nombre)
+                ? nombre
+                : null;
+
+            lineas.Add(new LineaDeHistorico(movimiento, Saldo.De(cantidad), valor, papel, quien));
         }
 
         return lineas;
@@ -442,7 +456,8 @@ public class ServicioDeMovimientos(
     {
         var entrada = new Movimiento(
             articulo.Id, almacen.Id, TipoDeMovimiento.Entrada, cantidad, coste,
-            fechaContable, reloj.GetUtcNow(), concepto, motivo, null, retroactivo, documentoId);
+            fechaContable, reloj.GetUtcNow(), concepto, motivo, null, retroactivo, documentoId,
+            quienRegistra.Id);
 
         movimientos.Agregar(entrada);
         return entrada;
@@ -547,7 +562,8 @@ public class ServicioDeMovimientos(
 
         var salida = new Movimiento(
             articulo.Id, almacen.Id, TipoDeMovimiento.Salida, cantidad, coste + costeEnDescubierto,
-            fechaContable, reloj.GetUtcNow(), concepto, motivo, null, retroactivo, documentoId);
+            fechaContable, reloj.GetUtcNow(), concepto, motivo, null, retroactivo, documentoId,
+            quienRegistra.Id);
 
         movimientos.Agregar(salida);
 

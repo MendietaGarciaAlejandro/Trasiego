@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using Trasiego.Api.Errores;
 using Trasiego.Api.Mantenimiento;
+using Trasiego.Api.Seguridad;
 using Trasiego.Aplicacion.Abstracciones;
 using Trasiego.Aplicacion.Acceso;
 using Trasiego.Aplicacion.Almacenes;
@@ -42,18 +43,26 @@ if (string.IsNullOrWhiteSpace(jwt.Clave))
 
 constructor.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(opciones => opciones.TokenValidationParameters = new TokenValidationParameters
+    .AddJwtBearer(opciones =>
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwt.Emisor,
-        ValidAudience = jwt.Audiencia,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Clave)),
+        // Sin esto, ASP.NET traduce los nombres cortos del JWT a las URIs largas de
+        // WS-Federation, y el "sub" que se firma llega llamandose de otra manera. Se lee lo
+        // mismo que se escribe.
+        opciones.MapInboundClaims = false;
 
-        // Sin margen extra: un token caducado deja de valer al segundo.
-        ClockSkew = TimeSpan.Zero,
+        opciones.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwt.Emisor,
+            ValidAudience = jwt.Audiencia,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Clave)),
+
+            // Sin margen extra: un token caducado deja de valer al segundo.
+            ClockSkew = TimeSpan.Zero,
+        };
     });
 
 constructor.Services.AddAuthorization();
@@ -66,6 +75,10 @@ constructor.Services
         opciones.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 constructor.Services.AddOpenApi();
+
+// Quien registra sale del token de la peticion en curso, asi que va por peticion.
+constructor.Services.AddHttpContextAccessor();
+constructor.Services.AddScoped<IQuienRegistra, QuienRegistraLaPeticion>();
 
 constructor.Services.AddScoped<ServicioDeAcceso>();
 constructor.Services.AddScoped<ServicioDeArticulos>();

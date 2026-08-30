@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -168,6 +168,32 @@ public class ApiTests(BaseDeDatosDePruebas baseDeDatos) : IAsyncLifetime
 
     private static DateOnly Hoy => DateOnly.FromDateTime(DateTime.Now);
     private static DateOnly Ayer => Hoy.AddDays(-1);
+
+    [Fact]
+    public async Task Cada_movimiento_lo_firma_el_del_token_y_no_el_que_lo_pide()
+    {
+        var (articulo, almacen) = await Catalogo();
+
+        await _cliente.PostAsJsonAsync(
+            "/api/movimientos/entradas",
+            new EntradaPedida(articulo.Id, almacen.Id, 10m, 20m, Escenario.Hoy), Json);
+
+        // El mismo articulo y el mismo almacen, pero con otro dentro. Nada de lo que se
+        // manda dice quien es: eso solo sale del token.
+        using var otro = _api.CreateClient();
+        await Identificarse(otro, "operario@trasiego.test");
+
+        await otro.PostAsJsonAsync(
+            "/api/movimientos/salidas",
+            new SalidaPedida(articulo.Id, almacen.Id, 4m, Escenario.Hoy), Json);
+
+        var kardex = await _cliente.GetFromJsonAsync<IReadOnlyList<LineaDeKardex>>(
+            $"/api/movimientos/kardex?articuloId={articulo.Id}&almacenId={almacen.Id}", Json);
+
+        Assert.NotNull(kardex);
+        Assert.Equal("Encargada de almacen", kardex[0].Usuario);
+        Assert.Equal("Operario de almacen", kardex[1].Usuario);
+    }
 
     private async Task<ArticuloVisto> Alta(MetodoDeValoracion metodo = MetodoDeValoracion.Fifo)
     {

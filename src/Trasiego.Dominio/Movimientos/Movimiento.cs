@@ -1,4 +1,4 @@
-using Trasiego.Dominio.Comun;
+﻿using Trasiego.Dominio.Comun;
 using Trasiego.Dominio.Valores;
 
 namespace Trasiego.Dominio.Movimientos;
@@ -15,7 +15,8 @@ public class Movimiento(
     MotivoDeMovimiento motivo = MotivoDeMovimiento.Ordinario,
     Guid? movimientoOrigenId = null,
     bool retroactivo = false,
-    Guid? documentoId = null)
+    Guid? documentoId = null,
+    Guid? usuarioId = null)
 {
     public Guid Id { get; private set; } = Guid.CreateVersion7();
 
@@ -57,6 +58,10 @@ public class Movimiento(
     // El papel del que salio, si es que salio de uno. Los movimientos sueltos siguen
     // valiendo: no todo lo que pasa en un almacen viene con un albaran detras.
     public Guid? DocumentoId { get; private set; } = documentoId;
+
+    // Quien lo registro. Es nulo en los movimientos que no vienen de una peticion, que hoy
+    // son los de las pruebas y los que quedaron de antes de que hubiera usuarios.
+    public Guid? UsuarioId { get; private set; } = usuarioId;
 
     public string? Concepto { get; private set; } =
         string.IsNullOrWhiteSpace(concepto) ? null : Comprobar.ComoMucho(concepto.Trim(), 200);

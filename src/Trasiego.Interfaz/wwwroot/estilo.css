@@ -1,4 +1,4 @@
-/* Una hoja escrita a mano en vez de una biblioteca de componentes. Esto es una herramienta
+﻿/* Una hoja escrita a mano en vez de una biblioteca de componentes. Esto es una herramienta
    de almacen: lo que tiene que hacer bien es enseñar muchas filas de numeros y que se lean
    de un vistazo, no parecerse a una web. */
 
@@ -269,6 +269,11 @@ tr.pinchable { cursor: pointer; }
 .kardex td:nth-child(6), .kardex td:nth-child(7) { border-left: 1px solid #f0eeea; }
 
 .negativo { color: var(--malo); }
+
+.quien {
+    color: var(--apagado);
+    white-space: nowrap;
+}
 
 .papel {
     margin-left: 7px;

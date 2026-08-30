@@ -1,4 +1,4 @@
-@page "/"
+﻿@page "/"
 @inject ClienteDeTrasiego trasiego
 
 <h1>Kardex</h1>
@@ -116,6 +116,7 @@ else
             <tr>
                 <th>Fecha</th>
                 <th>Concepto</th>
+                <th>Quien</th>
                 <th class="numero">Entra</th>
                 <th class="numero">Sale</th>
                 <th class="numero">Coste</th>
@@ -139,6 +140,7 @@ else
                             <span class="marca" title="Llego con fecha anterior a lo que ya habia">tarde</span>
                         }
                     </td>
+                    <td class="quien">@(linea.Usuario ?? "—")</td>
                     <td class="numero">
                         @(linea.Tipo is TipoDeMovimiento.Entrada ? Numero(linea.Cantidad) : "")
                     </td>

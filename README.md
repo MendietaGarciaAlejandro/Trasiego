@@ -50,7 +50,7 @@ autenticación integrada: ahí no hay ningún secreto que guardar, porque no lle
 contraseña. La clave de firma sí, y por eso va en user-secrets; sin ella la Api se niega a
 arrancar y dice el comando.
 
-`dotnet test` ejecuta todo, unos 156 tests. Los de dominio no tocan la base de datos y son
+`dotnet test` ejecuta todo, unos 161 tests. Los de dominio no tocan la base de datos y son
 instantáneos; los de integración crean una base suya en LocalDB al empezar y la borran al
 terminar, y los de la Api levantan la aplicación entera con `WebApplicationFactory`.
 
@@ -492,9 +492,36 @@ saldo de un almacén sí puede serlo. Aquí es donde hizo falta el tipo aparte: 
 signo, sabe si está en descubierto, y su `Disponible` es cero cuando lo está. Una cantidad
 sigue sin poder ser negativa, así que una capa tampoco.
 
+### La firma de un movimiento sale del token
+
+Cada movimiento se queda con quién lo registró. Todo el proyecto va de que cada número del
+kardex se pueda explicar, y hasta ahora se podía explicar el importe pero no de quién era la
+mano: el `MomentoDeRegistro` decía cuándo se tecleó algo, pero no quién lo tecleó.
+
+Quién es se saca del token de la petición y de ningún otro sitio. Si viajara en el cuerpo, lo
+podría cambiar cualquiera y la firma no valdría para nada: firmaría quien dijera el que la
+manda.
+
+Y no se pasa como argumento a cada método del servicio, sino detrás de una interfaz de una
+sola propiedad. Registrar una entrada pide un artículo, un almacén, una cantidad y un coste;
+quién la teclea no es un dato más de la entrada, es el contexto en el que ocurre todo lo de
+esa petición. Como parámetro habría que arrastrarlo por las ocho operaciones y por dentro de
+cada una hasta donde se crea el movimiento, incluidas las mitades de un traspaso y las
+devoluciones, que no las teclea nadie línea a línea pero también responden de alguien.
+
+La columna admite nulos porque hay movimientos que no vienen de una petición: los de las
+pruebas y los que quedaron de antes de que hubiera usuarios. Un movimiento sin firma se
+enseña con una raya y no con un nombre inventado.
+
+A un usuario con movimientos la base de datos no le deja borrarse, para que la firma no se
+pueda hacer desaparecer. Ojo con una cosa que descubrí probándolo: si el movimiento está
+cargado en el mismo contexto, EF le quita la firma antes de intentar el borrado y entonces sí
+pasa. Aquí no hay ningún sitio que borre usuarios —se dan de baja—, pero el test lo hace
+desde un contexto limpio aposta, que es lo único que comprueba de verdad la restricción.
+
 ## Por dónde ha ido
 
-El plan eran doce fases, y después salieron cuatro cosas más de las que fueron apareciendo por
+El plan eran doce fases, y después salieron seis cosas más de las que fueron apareciendo por
 el camino.
 
 1. **Andamiaje.** Capas, SQL Server, `Cantidad` e `Importe` con sus reglas de redondeo.
@@ -515,6 +542,8 @@ el camino.
 16. **Autenticación.** JWT con dos roles, y la sesión aguantando un recargado en la web y un
     cierre de la ventana en el escritorio.
 17. **Documentos.** Un albarán con sus líneas, que se registra entero o no se registra.
+18. **Quién.** Cada movimiento se queda con el usuario que lo registró, y el kardex lo
+    enseña.
 
 De todo eso, las fases 3 a 9 son el proyecto de verdad: lo demás es lo que hace falta para
 poder verlo.

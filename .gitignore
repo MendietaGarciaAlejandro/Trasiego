@@ -6,3 +6,7 @@ obj/
 *.suo
 TestResults/
 artifacts/
+
+# El cliente web no se arranca por su cuenta, lo sirve la Api: el launchSettings que le pone
+# Visual Studio al abrirlo no vale para nada.
+src/Trasiego.Web/Properties/

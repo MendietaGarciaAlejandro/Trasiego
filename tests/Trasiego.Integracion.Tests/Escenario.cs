@@ -1,4 +1,5 @@
-using Microsoft.Extensions.Time.Testing;
+﻿using Microsoft.Extensions.Time.Testing;
+using Trasiego.Aplicacion.Abstracciones;
 using Trasiego.Aplicacion.Cierres;
 using Trasiego.Aplicacion.Documentos;
 using Trasiego.Aplicacion.Informes;
@@ -56,14 +57,22 @@ internal static class Escenario
             new RepositorioDeCierres(contexto),
             new UnidadDeTrabajo(contexto));
 
-    public static ServicioDeMovimientos Servicio(ContextoDeTrasiego contexto) =>
+    /// <summary>
+    /// Casi ningun test tiene detras a nadie, porque lo que prueban son las reglas y no quien
+    /// las dispara. Los que si lo necesitan pasan un usuario.
+    /// </summary>
+    public static ServicioDeMovimientos Servicio(
+        ContextoDeTrasiego contexto,
+        Guid? usuarioId = null) =>
         new(new RepositorioDeArticulos(contexto),
             new RepositorioDeAlmacenes(contexto),
             new RepositorioDeMovimientos(contexto),
             new RepositorioDeValoracion(contexto),
             new RepositorioDeCierres(contexto),
             new RepositorioDeDocumentos(contexto),
+            new RepositorioDeUsuarios(contexto),
             new UnidadDeTrabajo(contexto),
+            new QuienSea(usuarioId),
             Reloj());
 
     public static async Task<(Articulo Articulo, Almacen Almacen)> Catalogo(
@@ -82,4 +91,16 @@ internal static class Escenario
 
         return (articulo, almacen);
     }
+
+    /// <summary>Un almacen suelto, para lo que necesita dos.</summary>
+    public static async Task<Almacen> OtroAlmacen(ContextoDeTrasiego contexto)
+    {
+        var numero = Interlocked.Increment(ref _siguiente);
+        var almacen = new Almacen($"D{numero}", $"Almacen de destino {numero}");
+
+        await new RepositorioDeAlmacenes(contexto).Alta(almacen);
+        return almacen;
+    }
 }
+
+internal record QuienSea(Guid? Id) : IQuienRegistra;

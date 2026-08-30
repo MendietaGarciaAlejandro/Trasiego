@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Trasiego.Dominio.Acceso;
 using Trasiego.Contratos;
@@ -42,7 +42,8 @@ public class MovimientosController(ServicioDeMovimientos movimientos) : Controll
                 linea.Cantidad.Valor,
                 linea.Valor.Visible,
                 linea.Movimiento.Retroactivo,
-                linea.Documento))];
+                linea.Documento,
+                linea.Usuario))];
 
     /// <summary>Lo que hay y lo que vale ahora mismo.</summary>
     [HttpGet("existencias")]
