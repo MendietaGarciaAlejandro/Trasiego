@@ -1,4 +1,4 @@
-using Trasiego.Dominio.Comun;
+﻿using Trasiego.Dominio.Comun;
 using Trasiego.Dominio.Valores;
 
 namespace Trasiego.Dominio.Documentos;
@@ -98,12 +98,18 @@ public class Documento
 
     public bool EsBorrador => Estado is EstadoDeDocumento.Borrador;
 
-    public LineaDeDocumento Agregar(Guid articuloId, Cantidad cantidad, Importe coste)
+    public LineaDeDocumento Agregar(
+        Guid articuloId,
+        Cantidad cantidad,
+        Importe coste,
+        string? lote = null,
+        DateOnly? caducidad = null)
     {
         SoloEnBorrador();
 
-        // En una recepcion el coste viene del papel. En lo que sale no se teclea: lo pone la
-        // valoracion, y aceptarlo aqui daria a entender que sirve para algo.
+        // En una recepcion el coste y el lote vienen del papel. En lo que sale no se teclean:
+        // el coste lo pone la valoracion y el lote tambien, sacando primero lo que antes
+        // caduque. Aceptarlos aqui daria a entender que sirven para algo.
         if (Tipo is TipoDeDocumento.Recepcion)
         {
             if (coste < Importe.Cero)
@@ -114,8 +120,14 @@ public class Documento
             throw new ReglaDeNegocio(
                 "Solo las recepciones llevan coste: en lo que sale lo pone la valoracion.");
         }
+        else if (!string.IsNullOrWhiteSpace(lote) || caducidad is not null)
+        {
+            throw new ReglaDeNegocio(
+                "Solo las recepciones dicen el lote: en lo que sale sale primero lo que antes caduca.");
+        }
 
-        var linea = new LineaDeDocumento(Id, _lineas.Count, articuloId, cantidad, coste);
+        var linea = new LineaDeDocumento(
+            Id, _lineas.Count, articuloId, cantidad, coste, lote, caducidad);
         _lineas.Add(linea);
 
         return linea;
@@ -162,12 +174,18 @@ public class LineaDeDocumento
         int orden,
         Guid articuloId,
         Cantidad cantidad,
-        Importe coste)
+        Importe coste,
+        string? lote = null,
+        DateOnly? caducidad = null)
     {
         Id = Guid.CreateVersion7();
         DocumentoId = documentoId;
         Orden = orden;
         ArticuloId = articuloId;
+        Lote = string.IsNullOrWhiteSpace(lote)
+            ? null
+            : Comprobar.ComoMucho(lote.Trim(), 40).ToUpperInvariant();
+        Caducidad = caducidad;
         Cantidad = cantidad.EsCero
             ? throw new ReglaDeNegocio("Una linea de cantidad cero no mueve nada.")
             : cantidad;
@@ -187,4 +205,12 @@ public class LineaDeDocumento
 
     /// <summary>Lo que costo esa linea entera. Cero en todo lo que no sea una recepcion.</summary>
     public Importe Coste { get; private set; }
+
+    /// <summary>
+    /// De que lote llega, en las recepciones de articulos que se llevan por lotes. Lo que
+    /// sale no lo dice: eso lo decide la valoracion sacando primero lo que antes caduque.
+    /// </summary>
+    public string? Lote { get; private set; }
+
+    public DateOnly? Caducidad { get; private set; }
 }

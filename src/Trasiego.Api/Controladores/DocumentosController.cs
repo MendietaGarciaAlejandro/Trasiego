@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Trasiego.Aplicacion.Documentos;
 using Trasiego.Aplicacion.Movimientos;
@@ -48,7 +48,7 @@ public class DocumentosController(
         CancellationToken cancelacion) =>
         DocumentoVisto.De(await documentos.AgregarLinea(
             id, peticion.ArticuloId, Cantidad.De(peticion.Cantidad),
-            Importe.De(peticion.Coste), cancelacion));
+            Importe.De(peticion.Coste), peticion.Lote, peticion.Caducidad, cancelacion));
 
     [HttpDelete("{id:guid}/lineas/{lineaId:guid}")]
     public async Task<DocumentoVisto> QuitarLinea(

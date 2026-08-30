@@ -63,6 +63,17 @@
                 Coste de la entrada
                 <input type="number" step="0.01" @bind="coste" />
             </label>
+            @if (PorLotes)
+            {
+                <label>
+                    Lote
+                    <input @bind="lote" placeholder="L-2026-04" />
+                </label>
+                <label>
+                    Caduca
+                    <input type="date" @bind="caducidad" />
+                </label>
+            }
             <label class="ancha">
                 Concepto
                 <input @bind="concepto" placeholder="albaran 1042" />
@@ -92,6 +103,14 @@
             El coste es el de la entrada entera, no el de cada unidad. Las salidas no lo
             llevan: sale de las capas. Y un traspaso tampoco: lo que vale al salir de aqui es
             lo que vale al llegar alli, con la cantidad y la fecha de arriba.
+
+            @if (PorLotes)
+            {
+                <text>
+                    El lote solo lo dice lo que entra: en lo que sale lo decide la valoracion,
+                    que vacia primero lo que antes caduque.
+                </text>
+            }
         </p>
 
         @if (aviso is not null)
@@ -174,11 +193,16 @@ else
     private decimal cantidad = 1;
     private decimal coste;
     private string concepto = "";
+    private string lote = "";
+    private DateOnly? caducidad;
 
     private string? aviso;
     private bool ocupado;
 
     private bool Elegido => articuloId != Guid.Empty && almacenId != Guid.Empty;
+
+    private bool PorLotes => articulos
+        .FirstOrDefault(articulo => articulo.Id == articuloId)?.LlevaLotes ?? false;
 
     private string unidad => articulos
         .FirstOrDefault(articulo => articulo.Id == articuloId)?.Unidad.Abreviatura() ?? "";
@@ -206,8 +230,9 @@ else
         existencias = await trasiego.Existencias(articuloId, almacenId);
     }
 
-    private Task Entrada() => Registrar(() => trasiego.Entrada(
-        new EntradaPedida(articuloId, almacenId, cantidad, coste, fecha, Concepto())));
+    private Task Entrada() => Registrar(() => trasiego.Entrada(new EntradaPedida(
+        articuloId, almacenId, cantidad, coste, fecha, Concepto(),
+        string.IsNullOrWhiteSpace(lote) ? null : lote, caducidad)));
 
     private Task Salida() => Registrar(() => trasiego.Salida(
         new SalidaPedida(articuloId, almacenId, cantidad, fecha, Concepto())));
@@ -223,7 +248,8 @@ else
         try
         {
             await movimiento();
-            concepto = "";
+            concepto = lote = "";
+            caducidad = null;
             await Cargar();
         }
         catch (FalloDeTrasiego fallo)

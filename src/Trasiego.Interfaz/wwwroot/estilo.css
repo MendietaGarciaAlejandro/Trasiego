@@ -170,6 +170,13 @@ label.casilla {
     padding-bottom: 8px;
 }
 
+/* Los campos de texto llevan un ancho minimo para que quepa lo que se teclea. Una casilla no
+   tiene nada que teclear, y con ese ancho se queda a media pantalla de su propio rotulo. */
+label.casilla input[type="checkbox"] {
+    min-width: 0;
+    margin: 0;
+}
+
 input, select {
     font: inherit;
     color: var(--tinta);
@@ -264,11 +271,19 @@ tr.pinchable { cursor: pointer; }
     white-space: nowrap;
 }
 
-.kardex td:nth-child(6), .kardex td:nth-child(7) { font-weight: 600; }
-.kardex th:nth-child(6), .kardex th:nth-child(7) { border-left: 1px solid var(--linea); }
-.kardex td:nth-child(6), .kardex td:nth-child(7) { border-left: 1px solid #f0eeea; }
+/* El saldo y el valor, que son las dos columnas que se siguen con el dedo. Van por posicion,
+   asi que al meter una columna nueva en el kardex hay que correrlas. */
+.kardex td:nth-child(7), .kardex td:nth-child(8) { font-weight: 600; }
+.kardex th:nth-child(7), .kardex th:nth-child(8) { border-left: 1px solid var(--linea); }
+.kardex td:nth-child(7), .kardex td:nth-child(8) { border-left: 1px solid #f0eeea; }
 
 .negativo { color: var(--malo); }
+
+/* Lo caducado sigue estando y sigue valiendo, pero no se sirve: se ve, apagado. */
+tr.caducado td {
+    color: var(--apagado);
+    background: #faf7f2;
+}
 
 .quien {
     color: var(--apagado);

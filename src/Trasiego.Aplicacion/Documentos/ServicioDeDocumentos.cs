@@ -1,4 +1,4 @@
-using Trasiego.Aplicacion.Abstracciones;
+﻿using Trasiego.Aplicacion.Abstracciones;
 using Trasiego.Dominio.Comun;
 using Trasiego.Dominio.Documentos;
 using Trasiego.Dominio.Valores;
@@ -48,6 +48,8 @@ public class ServicioDeDocumentos(
         Guid articuloId,
         Cantidad cantidad,
         Importe coste,
+        string? lote = null,
+        DateOnly? caducidad = null,
         CancellationToken cancelacion = default)
     {
         var documento = await PorId(documentoId, cancelacion);
@@ -60,7 +62,11 @@ public class ServicioDeDocumentos(
 
         articulo.ComprobarCantidad(cantidad);
 
-        documento.Agregar(articuloId, cantidad, coste);
+        // Solo en las recepciones: en lo que sale el documento ya se niega a llevar lote, y
+        // exigirselo aqui a una entrega seria pedir un dato que no se puede dar.
+        if (documento.Tipo is TipoDeDocumento.Recepcion) articulo.ComprobarLote(lote);
+
+        documento.Agregar(articuloId, cantidad, coste, lote, caducidad);
         await documentos.GuardarCambios(cancelacion);
 
         return documento;

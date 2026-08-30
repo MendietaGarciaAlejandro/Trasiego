@@ -1,4 +1,4 @@
-using Trasiego.Dominio.Valoracion;
+﻿using Trasiego.Dominio.Valoracion;
 using Trasiego.Dominio.Valores;
 
 namespace Trasiego.Aplicacion.Abstracciones;
@@ -34,6 +34,15 @@ public interface IRepositorioDeValoracion
         CancellationToken cancelacion = default);
 
     void Agregar(Descubierto descubierto);
+
+    /// <summary>
+    /// Las capas con existencias de un almacen, opcionalmente solo las que caducan antes de
+    /// una fecha. Es lo que hay repartido por lotes: una capa ya es un lote.
+    /// </summary>
+    Task<IReadOnlyList<CapaDeExistencias>> Lotes(
+        Guid almacenId,
+        DateOnly? caducanAntesDe = null,
+        CancellationToken cancelacion = default);
 
     /// <summary>Todas las capas con existencias de un almacen, para la foto del cierre.</summary>
     Task<IReadOnlyList<CapaDeExistencias>> CapasConExistenciasDelAlmacen(

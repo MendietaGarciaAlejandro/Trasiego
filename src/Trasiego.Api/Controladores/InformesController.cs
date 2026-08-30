@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Trasiego.Aplicacion.Informes;
 using Trasiego.Contratos;
@@ -28,5 +28,29 @@ public class InformesController(ServicioDeInformes informes) : ControllerBase
             [.. lineas.Select(linea => new LineaDeValoracionVista(
                 linea.ArticuloId, linea.Referencia, linea.Nombre,
                 linea.Cantidad.Valor, linea.Valor.Visible))]);
+    }
+
+    /// <summary>
+    /// Lo que hay en un almacen repartido por lotes, en el orden en que va a ir saliendo:
+    /// primero lo que antes caduca. Con <c>caducanAntesDe</c>, solo lo que vence antes de
+    /// esa fecha.
+    /// </summary>
+    [HttpGet("lotes")]
+    public async Task<IReadOnlyList<LineaDeLoteVista>> Lotes(
+        [FromQuery] Guid almacenId,
+        [FromQuery] DateOnly? caducanAntesDe,
+        CancellationToken cancelacion)
+    {
+        var hoy = DateOnly.FromDateTime(DateTime.Now);
+
+        return
+        [
+            .. (await informes.Lotes(almacenId, caducanAntesDe, cancelacion))
+                .Select(linea => new LineaDeLoteVista(
+                    linea.ArticuloId, linea.Referencia, linea.Nombre,
+                    linea.Lote, linea.Caducidad,
+                    linea.Cantidad.Valor, linea.Valor.Visible,
+                    linea.Caducidad is { } cuando && cuando < hoy)),
+        ];
     }
 }

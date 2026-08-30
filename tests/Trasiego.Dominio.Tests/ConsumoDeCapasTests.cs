@@ -1,4 +1,4 @@
-using Trasiego.Dominio.Comun;
+﻿using Trasiego.Dominio.Comun;
 using Trasiego.Dominio.Valoracion;
 using Trasiego.Dominio.Valores;
 
@@ -8,13 +8,16 @@ public class ConsumoDeCapasTests
 {
     private static readonly DateTimeOffset Ahora = new(2026, 3, 15, 10, 0, 0, TimeSpan.Zero);
 
+    // Aqui ninguna capa caduca, asi que el dia al que se consume no desempata nada.
+    private static readonly DateOnly Hoy = new(2026, 3, 15);
+
     [Fact]
     public void Una_salida_que_cabe_en_la_primera_capa_no_toca_las_demas()
     {
         var primera = Capa(10, 20m, dia: 1);
         var segunda = Capa(10, 30m, dia: 5);
 
-        var tomas = ConsumoDeCapas.Consumir([primera, segunda], Cantidad.De(4));
+        var tomas = ConsumoDeCapas.Consumir([primera, segunda], Cantidad.De(4), Hoy);
 
         Assert.Single(tomas);
         Assert.Equal(Importe.De(8m), tomas[0].Coste);
@@ -28,7 +31,7 @@ public class ConsumoDeCapasTests
         var primera = Capa(10, 20m, dia: 1);
         var segunda = Capa(10, 30m, dia: 5);
 
-        var tomas = ConsumoDeCapas.Consumir([primera, segunda], Cantidad.De(15));
+        var tomas = ConsumoDeCapas.Consumir([primera, segunda], Cantidad.De(15), Hoy);
 
         Assert.Equal([Importe.De(20m), Importe.De(15m)], tomas.Select(t => t.Coste));
         Assert.True(primera.Agotada);
@@ -42,7 +45,7 @@ public class ConsumoDeCapasTests
         var albaranViejo = Capa(5, 10m, dia: 1, registro: Ahora);
         var albaranNuevo = Capa(5, 50m, dia: 9, registro: Ahora.AddDays(-3));
 
-        var tomas = ConsumoDeCapas.Consumir([albaranNuevo, albaranViejo], Cantidad.De(5));
+        var tomas = ConsumoDeCapas.Consumir([albaranNuevo, albaranViejo], Cantidad.De(5), Hoy);
 
         Assert.Equal(albaranViejo.Id, tomas.Single().CapaId);
     }
@@ -55,7 +58,7 @@ public class ConsumoDeCapasTests
 
         var salido = Importe.Cero;
         for (var i = 0; i < 3; i++)
-            salido += ConsumoDeCapas.Consumir([capa], Cantidad.De(1)).Single().Coste;
+            salido += ConsumoDeCapas.Consumir([capa], Cantidad.De(1), Hoy).Single().Coste;
 
         Assert.True(capa.Agotada);
         Assert.Equal(Importe.Cero, capa.CosteRestante);
@@ -68,7 +71,7 @@ public class ConsumoDeCapasTests
         var capa = Capa(5, 10m, dia: 1);
 
         var fallo = Assert.Throws<Conflicto>(
-            () => ConsumoDeCapas.Consumir([capa], Cantidad.De(8)));
+            () => ConsumoDeCapas.Consumir([capa], Cantidad.De(8), Hoy));
 
         Assert.Contains("faltan 3", fallo.Message);
     }
@@ -77,10 +80,10 @@ public class ConsumoDeCapasTests
     public void Una_capa_ya_agotada_no_estorba()
     {
         var vacia = Capa(5, 10m, dia: 1);
-        ConsumoDeCapas.Consumir([vacia], Cantidad.De(5));
+        ConsumoDeCapas.Consumir([vacia], Cantidad.De(5), Hoy);
 
         var buena = Capa(5, 25m, dia: 5);
-        var tomas = ConsumoDeCapas.Consumir([vacia, buena], Cantidad.De(2));
+        var tomas = ConsumoDeCapas.Consumir([vacia, buena], Cantidad.De(2), Hoy);
 
         Assert.Equal(buena.Id, tomas.Single().CapaId);
     }

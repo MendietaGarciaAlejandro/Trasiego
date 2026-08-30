@@ -1,0 +1,106 @@
+@page "/lotes"
+@inject ClienteDeTrasiego trasiego
+
+<h1>Lotes y caducidades</h1>
+
+<section class="eleccion">
+    <label>
+        Almacen
+        <select @bind="almacenId" @bind:after="Cargar">
+            <option value="@Guid.Empty">— elige —</option>
+            @foreach (var almacen in almacenes)
+            {
+                <option value="@almacen.Id">@almacen.Codigo · @almacen.Nombre</option>
+            }
+        </select>
+    </label>
+
+    <label>
+        Que caduquen antes de
+        <input type="date" @bind="hasta" @bind:after="Cargar" />
+    </label>
+
+    @if (hasta is not null)
+    {
+        <button @onclick="Todo">Ver todo</button>
+    }
+</section>
+
+<p class="pista">
+    En el mismo orden en que va a ir saliendo: primero lo que antes caduca, y lo que no caduca
+    al final. Lo caducado sigue contando y sigue valiendo dinero, pero no se sirve; se da de
+    baja con un recuento.
+</p>
+
+@if (lineas is null)
+{
+    <p class="vacio">Elige un almacen.</p>
+}
+else if (lineas.Count == 0)
+{
+    <p class="vacio">Ahi no queda nada con lote.</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr>
+                <th>Articulo</th>
+                <th>Lote</th>
+                <th>Caduca</th>
+                <th class="numero">Quedan</th>
+                <th class="numero">Valen</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var linea in lineas)
+            {
+                <tr class="@(linea.Caducado ? "caducado" : "")">
+                    <td class="clave">@linea.Referencia</td>
+                    <td>@(linea.Lote ?? "—")</td>
+                    <td>
+                        @if (linea.Caducidad is { } cuando)
+                        {
+                            @cuando.ToString("dd/MM/yyyy")
+
+                            if (linea.Caducado)
+                            {
+                                <span class="marca">caducado</span>
+                            }
+                        }
+                        else
+                        {
+                            <text>no caduca</text>
+                        }
+                    </td>
+                    <td class="numero">@Numero(linea.Cantidad)</td>
+                    <td class="numero">@Dinero(linea.Valor)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<AlmacenVisto> almacenes = [];
+    private IReadOnlyList<LineaDeLoteVista>? lineas;
+
+    private Guid almacenId;
+    private DateOnly? hasta;
+
+    protected override async Task OnInitializedAsync() =>
+        almacenes = await trasiego.Almacenes();
+
+    private async Task Cargar() =>
+        lineas = almacenId == Guid.Empty ? null : await trasiego.Lotes(almacenId, hasta);
+
+    private Task Todo()
+    {
+        hasta = null;
+        return Cargar();
+    }
+
+    private static string Numero(decimal valor) => valor.ToString("#,##0.####");
+
+    private static string Dinero(decimal valor) => valor.ToString("#,##0.00 €");
+}

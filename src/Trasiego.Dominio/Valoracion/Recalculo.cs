@@ -1,4 +1,4 @@
-using Trasiego.Dominio.Movimientos;
+﻿using Trasiego.Dominio.Movimientos;
 using Trasiego.Dominio.Valores;
 
 namespace Trasiego.Dominio.Valoracion;
@@ -163,7 +163,11 @@ public static class Recalculo
                 Cantidad.Cero, (suma, capa) => suma + capa.CantidadRestante);
 
             var deLasCapas = salida.Cantidad <= disponible ? salida.Cantidad : disponible;
-            var tomas = ConsumoDeCapas.Consumir(capas, deLasCapas);
+
+            // Sin caducidades de por medio, esto es el consumo por antiguedad de siempre: el
+            // recalculo no toca articulos con lotes, y en los demas ninguna capa caduca.
+            var tomas = ConsumoDeCapas.Consumir(
+                capas, deLasCapas, salida.FechaContable, admiteCaducado: true);
 
             var deEstaSalida = tomas
                 .Select((toma, orden) =>

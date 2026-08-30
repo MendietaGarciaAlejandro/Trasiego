@@ -1,4 +1,4 @@
-using Trasiego.Aplicacion.Abstracciones;
+﻿using Trasiego.Aplicacion.Abstracciones;
 using Trasiego.Dominio.Catalogo;
 using Trasiego.Dominio.Comun;
 using Trasiego.Dominio.Valoracion;
@@ -23,9 +23,10 @@ public class ServicioDeArticulos(
         string nombre,
         UnidadDeMedida unidad,
         MetodoDeValoracion metodo = MetodoDeValoracion.Fifo,
+        bool llevaLotes = false,
         CancellationToken cancelacion = default)
     {
-        var articulo = new Articulo(referencia, nombre, unidad, metodo);
+        var articulo = new Articulo(referencia, nombre, unidad, metodo, llevaLotes);
 
         // La unicidad de la referencia la impone la base de datos, pero comprobarla antes
         // permite decir de quien es en vez de soltar un choque de indice.

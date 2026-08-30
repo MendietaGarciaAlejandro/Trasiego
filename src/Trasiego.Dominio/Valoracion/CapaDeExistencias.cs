@@ -1,4 +1,4 @@
-using Trasiego.Dominio.Comun;
+﻿using Trasiego.Dominio.Comun;
 using Trasiego.Dominio.Valores;
 
 namespace Trasiego.Dominio.Valoracion;
@@ -21,9 +21,15 @@ public class CapaDeExistencias
         Cantidad cantidad,
         Importe coste,
         DateOnly fechaContable,
-        DateTimeOffset momentoDeRegistro)
+        DateTimeOffset momentoDeRegistro,
+        string? lote = null,
+        DateOnly? caducidad = null)
     {
         Id = Guid.CreateVersion7();
+        Lote = string.IsNullOrWhiteSpace(lote)
+            ? null
+            : Comprobar.ComoMucho(lote.Trim(), 40).ToUpperInvariant();
+        Caducidad = caducidad;
         ArticuloId = articuloId;
         AlmacenId = almacenId;
         MovimientoDeEntradaId = movimientoDeEntradaId;
@@ -47,6 +53,20 @@ public class CapaDeExistencias
     public DateOnly FechaContable { get; private set; }
     public DateTimeOffset MomentoDeRegistro { get; private set; }
 
+    /// <summary>
+    /// De que lote es lo que hay en la capa, si el articulo se lleva por lotes.
+    /// </summary>
+    /// <remarks>
+    /// Va aqui y no en una tabla aparte porque una capa ya era casi un lote: lo que queda de
+    /// una entrada concreta, con su coste y su fecha. Solo le faltaba el numero y hasta
+    /// cuando vale. El mismo lote recibido dos veces abre dos capas, que es lo que hay que
+    /// hacer de todas formas si vino a dos precios.
+    /// </remarks>
+    public string? Lote { get; private set; }
+
+    /// <summary>Hasta cuando vale. Nulo si no caduca, que no todo lo que se lotea caduca.</summary>
+    public DateOnly? Caducidad { get; private set; }
+
     public Cantidad CantidadInicial { get; private set; }
     public Importe CosteInicial { get; private set; }
 
@@ -54,6 +74,12 @@ public class CapaDeExistencias
     public Importe CosteRestante { get; private set; }
 
     public bool Agotada => CantidadRestante.EsCero;
+
+    /// <summary>
+    /// El dia de la caducidad todavia vale, que es lo que dice el envase: consumir
+    /// preferentemente antes del.
+    /// </summary>
+    public bool CaducadaA(DateOnly fecha) => Caducidad is { } cuando && cuando < fecha;
 
     /// <summary>
     /// Mete otra entrada en esta misma capa. Es lo unico que distingue al precio medio de

@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -164,6 +164,14 @@ public class ClienteDeTrasiego(HttpClient http)
     public Task<ValoracionVista> Valoracion(Guid almacenId, DateOnly fecha) =>
         Traer<ValoracionVista>(
             $"api/informes/valoracion?almacenId={almacenId}&fecha={fecha:yyyy-MM-dd}");
+
+    public Task<IReadOnlyList<LineaDeLoteVista>> Lotes(Guid almacenId, DateOnly? caducanAntesDe)
+    {
+        var hasta = caducanAntesDe is { } cuando ? $"&caducanAntesDe={cuando:yyyy-MM-dd}" : "";
+
+        return Traer<IReadOnlyList<LineaDeLoteVista>>(
+            $"api/informes/lotes?almacenId={almacenId}{hasta}");
+    }
 
     public Task<IReadOnlyList<CierreVisto>> Cierres(Guid almacenId) =>
         Traer<IReadOnlyList<CierreVisto>>($"api/cierres?almacenId={almacenId}");

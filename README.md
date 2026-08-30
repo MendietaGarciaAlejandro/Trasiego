@@ -52,7 +52,7 @@ autenticación integrada: ahí no hay ningún secreto que guardar, porque no lle
 contraseña. La clave de firma sí, y por eso va en user-secrets; sin ella la Api se niega a
 arrancar y dice el comando.
 
-`dotnet test` ejecuta todo, unos 161 tests. Los de dominio no tocan la base de datos y son
+`dotnet test` ejecuta todo, unos 176 tests. Los de dominio no tocan la base de datos y son
 instantáneos; los de integración crean una base suya en LocalDB al empezar y la borran al
 terminar, y los de la Api levantan la aplicación entera con `WebApplicationFactory`.
 
@@ -77,7 +77,7 @@ Lo que no va a hacer, para que quede claro desde el principio:
 - Multiempresa
 - Contabilidad
 - Compras ni ventas: no hay proveedores, ni tarifas, ni impuestos, ni facturas
-- Lotes ni números de serie
+- Números de serie: los lotes sí, pero seguir una unidad concreta no
 - Ubicaciones dentro del almacén
 
 ## Decisiones tomadas hasta ahora
@@ -527,9 +527,81 @@ cargado en el mismo contexto, EF le quita la firma antes de intentar el borrado 
 pasa. Aquí no hay ningún sitio que borre usuarios —se dan de baja—, pero el test lo hace
 desde un contexto limpio aposta, que es lo único que comprueba de verdad la restricción.
 
+### FEFO es FIFO con una línea más en el `ORDER BY`
+
+Cuando escribí lo de las capas dije que una capa de existencias ya era casi un lote: lo que
+queda de una entrada concreta, con su coste y su fecha. Al ponerle lotes resultó ser verdad.
+Solo le faltaban el número y hasta cuándo vale, y el criterio de salida se quedó en esto:
+
+```csharp
+.OrderBy(capa => capa.Caducidad ?? DateOnly.MaxValue)
+.ThenBy(capa => capa.FechaContable)
+.ThenBy(capa => capa.MomentoDeRegistro)
+```
+
+Un artículo sin lotes no tiene ninguna caducidad, así que el primer criterio no desempata
+nada y queda el orden de siempre. **FIFO es esto mismo con media lista vacía.** Lo que no
+caduca va al final: no tiene sentido guardar algo con fecha para sacar antes algo que no la
+tiene.
+
+La caducidad se mira **al día contable del movimiento**, no a hoy. Una salida con albarán de
+la semana pasada sale con las capas que valían entonces, que es otra vez la separación entre
+las dos fechas cambiando un número y no solo un informe.
+
+### Lo caducado no se sirve, pero sigue estando
+
+Una capa caducada no entra en una salida. No desaparece: sigue contando en el saldo y sigue
+valiendo dinero, porque está ahí, en su balda. La única forma de darla de baja es un recuento,
+y ahí sí se puede tocar. Es lo que hace cualquiera en un almacén: cuentas lo que queda bueno,
+el sistema saca la diferencia, y esa diferencia es la merma.
+
+Como el orden es por caducidad, un recuento se lleva lo caducado primero sin que nadie se lo
+pida.
+
+### Un artículo con lotes no admite descubierto
+
+No se sirve un lote que no se tiene: no habría número que poner en el albarán. Parece una
+restricción menor y resulta ser la pieza que sostiene todo lo demás — ver lo del recálculo,
+más abajo.
+
+### Lotes y precio medio son incompatibles
+
+A precio medio todas las entradas caen en la capa que ya estaba abierta, y esa capa es
+justamente lo que distingue un lote de otro. Si se mezclan, no queda dónde apuntar de qué lote
+es cada cosa.
+
+Se podría hacer separando lo que hoy hace la capa en dos: una entidad para el lote y otra
+para el coste. No lo hago porque entonces deja de ser verdad que *precio medio es FIFO con una
+sola capa*, que es la frase sobre la que se apoya medio proyecto, y el código de valoración se
+parte en dos caminos que ya no comparten nada. Es una decisión, no un muro.
+
+### Un artículo con lotes no se recalcula, porque no hay nada que recalcular
+
+El recálculo existe porque, sin lotes, **de qué capa sale cada cosa no es un hecho: es un
+convenio**. Diez tornillos de enero y diez de marzo son indistinguibles; cuando salen cuatro,
+nadie sabe cuáles salieron, y decimos que los de enero porque lo dice FIFO. Como es un
+convenio, cuando aparece un albarán con fecha anterior el convenio cambia de opinión y hay que
+aplicarlo otra vez. Eso es recalcular.
+
+Con lotes deja de ser un convenio. L-1 y L-2 son cajas distintas con pegatinas distintas;
+cuando salieron cuatro unidades salieron de una caja concreta, y quedó apuntado. Un albarán
+que llega tarde no cambia de qué caja salió lo que ya está en casa del cliente. Reproducir el
+histórico daría la versión que *habría tocado* según FEFO, y esa versión sería falsa.
+
+Y aquí es donde entra lo del descubierto: como un artículo con lotes no puede salir sin estar,
+ninguna salida queda esperando a una entrada posterior que la revalorice. Los costes
+registrados ya son los definitivos. Así que el recálculo no está capado para estos artículos:
+está de más, y lo dice con esas palabras.
+
+### El traspaso lleva los lotes al otro almacén
+
+Mover género de sitio no le cambia el lote igual que no le cambia lo que vale. Una salida de
+ocho unidades que vacía dos lotes abre **dos capas** en el almacén de destino, cada una con su
+número, su caducidad y la parte del coste que le toca. La mercancía llega repartida como salió.
+
 ## Por dónde ha ido
 
-El plan eran doce fases, y después salieron siete cosas más de las que fueron apareciendo por
+El plan eran doce fases, y después salieron ocho cosas más de las que fueron apareciendo por
 el camino.
 
 1. **Andamiaje.** Capas, SQL Server, `Cantidad` e `Importe` con sus reglas de redondeo.
@@ -554,6 +626,8 @@ el camino.
     enseña.
 19. **Integración continua.** Compilar, comprobar las migraciones y pasar los tests en cada
     push.
+20. **Lotes y caducidades.** FEFO, lo caducado que no se sirve, y los lotes cruzando los
+    traspasos.
 
 De todo eso, las fases 3 a 9 son el proyecto de verdad: lo demás es lo que hace falta para
 poder verlo.
@@ -562,5 +636,7 @@ poder verlo.
 
 Lo que se me ocurre a partir de aquí, por orden de ganas:
 
-- **Lotes y caducidades.** Está fuera del alcance a propósito, pero es lo que pediría cualquiera
-  que trabaje con alimentación o con farmacia, y encaja bien con las capas que ya hay.
+- **Servir un lote concreto.** Hoy la salida es siempre automática, por caducidad. Para una
+  retirada de producto, o cuando el cliente exige un lote, hace falta poder decir cuál. No
+  tiene dificultad de fondo —es filtrar las capas antes de consumirlas—; lo que cuesta es
+  arrastrar el dato por la Api, las líneas de documento y la pantalla.

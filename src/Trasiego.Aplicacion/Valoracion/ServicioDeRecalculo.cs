@@ -1,4 +1,4 @@
-using Trasiego.Aplicacion.Abstracciones;
+﻿using Trasiego.Aplicacion.Abstracciones;
 using Trasiego.Dominio.Catalogo;
 using Trasiego.Dominio.Cierres;
 using Trasiego.Dominio.Comun;
@@ -180,6 +180,25 @@ public class ServicioDeRecalculo(
     {
         var articulo = await articulos.PorId(articuloId, cancelacion)
             ?? throw new NoEncontrado("No existe el articulo.");
+
+        // Un articulo con lotes no se recalcula, y no por no poder: es que no hay nada que
+        // recalcular.
+        //
+        // El recalculo existe porque sin lotes de que capa sale cada cosa no es un hecho sino
+        // un convenio: diez tornillos de enero y diez de marzo son indistinguibles, y decimos
+        // que salieron los de enero porque lo dice FIFO. Cuando aparece un albaran con fecha
+        // anterior, el convenio cambia de opinion y hay que aplicarlo otra vez.
+        //
+        // Con lotes eso deja de ser un convenio: son cajas distintas y salio una concreta, y
+        // quedo apuntado cuando paso. Un albaran que llega tarde no cambia de que caja salio
+        // lo que ya esta en casa del cliente. Ademas, como un articulo con lotes no admite
+        // descubierto, ninguna salida puede estar esperando a una entrada posterior que la
+        // revalorice: los costes registrados son los definitivos.
+        if (articulo.LlevaLotes)
+            throw new ReglaDeNegocio(
+                $"{articulo.Referencia} se lleva por lotes: de que lote salio cada cosa no es " +
+                "una suposicion que rehacer, es lo que paso y esta apuntado. Aqui no hay nada " +
+                "que recalcular.");
 
         return (articulo, await cierres.Ultimo(almacenId, cancelacion));
     }

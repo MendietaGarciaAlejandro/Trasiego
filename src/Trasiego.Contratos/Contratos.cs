@@ -35,7 +35,8 @@ public record AltaDeArticulo(
     string Referencia,
     string Nombre,
     UnidadDeMedida Unidad,
-    MetodoDeValoracion Metodo = MetodoDeValoracion.Fifo);
+    MetodoDeValoracion Metodo = MetodoDeValoracion.Fifo,
+    bool LlevaLotes = false);
 
 public record CambioDeMetodo(MetodoDeValoracion Metodo);
 
@@ -45,11 +46,12 @@ public record ArticuloVisto(
     string Nombre,
     UnidadDeMedida Unidad,
     MetodoDeValoracion Metodo,
+    bool LlevaLotes,
     bool Activo)
 {
     public static ArticuloVisto De(Articulo articulo) => new(
         articulo.Id, articulo.Referencia, articulo.Nombre,
-        articulo.Unidad, articulo.Metodo, articulo.Activo);
+        articulo.Unidad, articulo.Metodo, articulo.LlevaLotes, articulo.Activo);
 }
 
 public record AltaDeAlmacen(string Codigo, string Nombre, bool PermiteDescubierto = false);
@@ -78,9 +80,21 @@ public record AbrirDocumento(
     Guid? AlmacenDestinoId = null,
     string? Concepto = null);
 
-public record LineaPedida(Guid ArticuloId, decimal Cantidad, decimal Coste = 0m);
+public record LineaPedida(
+    Guid ArticuloId,
+    decimal Cantidad,
+    decimal Coste = 0m,
+    string? Lote = null,
+    DateOnly? Caducidad = null);
 
-public record LineaVista(Guid Id, Guid ArticuloId, int Orden, decimal Cantidad, decimal Coste);
+public record LineaVista(
+    Guid Id,
+    Guid ArticuloId,
+    int Orden,
+    decimal Cantidad,
+    decimal Coste,
+    string? Lote,
+    DateOnly? Caducidad);
 
 public record DocumentoVisto(
     Guid Id,
@@ -99,8 +113,20 @@ public record DocumentoVisto(
         documento.FechaContable, documento.Concepto, documento.Estado,
         [.. documento.Lineas.OrderBy(linea => linea.Orden).Select(linea => new LineaVista(
             linea.Id, linea.ArticuloId, linea.Orden,
-            linea.Cantidad.Valor, linea.Coste.Visible))]);
+            linea.Cantidad.Valor, linea.Coste.Visible,
+            linea.Lote, linea.Caducidad))]);
 }
+
+/// <summary>Lo que queda de un lote en un almacen, y hasta cuando vale.</summary>
+public record LineaDeLoteVista(
+    Guid ArticuloId,
+    string Referencia,
+    string Nombre,
+    string? Lote,
+    DateOnly? Caducidad,
+    decimal Cantidad,
+    decimal Valor,
+    bool Caducado);
 
 public record EntradaPedida(
     Guid ArticuloId,
@@ -108,7 +134,9 @@ public record EntradaPedida(
     decimal Cantidad,
     decimal Coste,
     DateOnly FechaContable,
-    string? Concepto = null);
+    string? Concepto = null,
+    string? Lote = null,
+    DateOnly? Caducidad = null);
 
 public record SalidaPedida(
     Guid ArticuloId,

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Trasiego.Dominio.Acceso;
 using Trasiego.Contratos;
@@ -28,7 +28,8 @@ public class ArticulosController(ServicioDeArticulos articulos) : ControllerBase
         CancellationToken cancelacion)
     {
         var articulo = await articulos.Alta(
-            peticion.Referencia, peticion.Nombre, peticion.Unidad, peticion.Metodo, cancelacion);
+            peticion.Referencia, peticion.Nombre, peticion.Unidad, peticion.Metodo,
+            peticion.LlevaLotes, cancelacion);
 
         return CreatedAtAction(
             nameof(PorId), new { id = articulo.Id }, ArticuloVisto.De(articulo));

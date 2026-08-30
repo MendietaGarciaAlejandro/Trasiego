@@ -1,4 +1,4 @@
-using Trasiego.Aplicacion.Abstracciones;
+﻿using Trasiego.Aplicacion.Abstracciones;
 using Trasiego.Dominio.Comun;
 using Trasiego.Dominio.Valores;
 
@@ -12,10 +12,21 @@ public record LineaDeValoracion(
     Saldo Cantidad,
     Importe Valor);
 
+/// <summary>Lo que queda de un lote en un almacen, y hasta cuando vale.</summary>
+public record LineaDeLote(
+    Guid ArticuloId,
+    string Referencia,
+    string Nombre,
+    string? Lote,
+    DateOnly? Caducidad,
+    Cantidad Cantidad,
+    Importe Valor);
+
 public class ServicioDeInformes(
     IRepositorioDeAlmacenes almacenes,
     IRepositorioDeArticulos articulos,
-    IRepositorioDeMovimientos movimientos)
+    IRepositorioDeMovimientos movimientos,
+    IRepositorioDeValoracion valoracion)
 {
     /// <summary>
     /// Lo que valia un almacen un dia concreto, articulo a articulo.
@@ -50,6 +61,42 @@ public class ServicioDeInformes(
                     Saldo.De(fila.Cantidad),
                     Importe.De(fila.Valor)))
                 .OrderBy(linea => linea.Referencia)
+        ];
+    }
+
+    /// <summary>
+    /// Lo que hay en un almacen repartido por lotes, en el orden en que va a ir saliendo.
+    /// Con una fecha, solo lo que caduca antes de ella.
+    /// </summary>
+    /// <remarks>
+    /// Esto tampoco reconstruye nada: una capa de existencias ya era un lote, con su cantidad,
+    /// su coste y su fecha. Solo hubo que ponerle el numero y hasta cuando vale.
+    /// </remarks>
+    public async Task<IReadOnlyList<LineaDeLote>> Lotes(
+        Guid almacenId,
+        DateOnly? caducanAntesDe = null,
+        CancellationToken cancelacion = default)
+    {
+        _ = await almacenes.PorId(almacenId, cancelacion)
+            ?? throw new NoEncontrado("No existe el almacen.");
+
+        var porId = (await articulos.Listar(incluirBajas: true, cancelacion))
+            .ToDictionary(articulo => articulo.Id);
+
+        return
+        [
+            .. (await valoracion.Lotes(almacenId, caducanAntesDe, cancelacion))
+                // Solo los que se llevan por lotes. Los demas tambien tienen capas, pero
+                // ahi una capa es un detalle de como se valora y no dice nada de lo que hay.
+                .Where(capa => porId[capa.ArticuloId].LlevaLotes)
+                .Select(capa => new LineaDeLote(
+                    capa.ArticuloId,
+                    porId[capa.ArticuloId].Referencia,
+                    porId[capa.ArticuloId].Nombre,
+                    capa.Lote,
+                    capa.Caducidad,
+                    capa.CantidadRestante,
+                    capa.CosteRestante))
         ];
     }
 }

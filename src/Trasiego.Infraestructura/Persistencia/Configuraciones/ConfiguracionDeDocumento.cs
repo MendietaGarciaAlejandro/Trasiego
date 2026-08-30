@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Trasiego.Dominio.Documentos;
 using Trasiego.Dominio.Valores;
@@ -45,6 +45,9 @@ public class ConfiguracionDeLineaDeDocumento : IEntityTypeConfiguration<LineaDeD
             .HasConversion<ConvertidorDeCantidad>().HasPrecision(18, Cantidad.Decimales);
         linea.Property(l => l.Coste)
             .HasConversion<ConvertidorDeImporte>().HasPrecision(19, Importe.Decimales);
+
+        linea.Property(l => l.Lote).HasMaxLength(40);
+        linea.Property(l => l.Caducidad).HasColumnType("date");
 
         linea.HasIndex(l => new { l.DocumentoId, l.Orden });
     }

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Trasiego.Aplicacion.Abstracciones;
 using Trasiego.Dominio.Valoracion;
 using Trasiego.Dominio.Valores;
@@ -36,6 +36,20 @@ public class RepositorioDeValoracion(ContextoDeTrasiego contexto) : IRepositorio
             .ThenBy(c => c.MomentoDeRegistro)
             .ThenBy(c => c.Id)
             .FirstOrDefaultAsync(cancelacion);
+
+    public async Task<IReadOnlyList<CapaDeExistencias>> Lotes(
+        Guid almacenId,
+        DateOnly? caducanAntesDe = null,
+        CancellationToken cancelacion = default) =>
+        await contexto.Capas
+            .Where(c => c.AlmacenId == almacenId && c.CantidadRestante != Cantidad.Cero)
+            .Where(c => caducanAntesDe == null
+                     || (c.Caducidad != null && c.Caducidad < caducanAntesDe))
+            // En el mismo orden en que se consumirian: lo que antes caduca, primero.
+            .OrderBy(c => c.Caducidad ?? DateOnly.MaxValue)
+            .ThenBy(c => c.FechaContable)
+            .ThenBy(c => c.MomentoDeRegistro)
+            .ToListAsync(cancelacion);
 
     public async Task<IReadOnlyList<CapaDeExistencias>> CapasConExistenciasDelAlmacen(
         Guid almacenId,

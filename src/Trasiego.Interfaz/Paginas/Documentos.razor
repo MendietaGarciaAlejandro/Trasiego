@@ -1,4 +1,4 @@
-@page "/documentos"
+﻿@page "/documentos"
 @inject ClienteDeTrasiego trasiego
 
 <h1>Documentos</h1>
@@ -99,6 +99,18 @@
                         Coste de la linea
                         <input type="number" step="0.01" @bind="coste" />
                     </label>
+
+                    @if (PorLotes)
+                    {
+                        <label>
+                            Lote
+                            <input @bind="lote" placeholder="L-2026-04" />
+                        </label>
+                        <label>
+                            Caduca
+                            <input type="date" @bind="caducidad" />
+                        </label>
+                    }
                 }
 
                 <button @onclick="AgregarLinea"
@@ -130,6 +142,7 @@
                         @if (abierto.Tipo is TipoDeDocumento.Recepcion)
                         {
                             <th class="numero">Coste</th>
+                            <th>Lote</th>
                         }
                         <th></th>
                     </tr>
@@ -143,6 +156,13 @@
                             @if (abierto.Tipo is TipoDeDocumento.Recepcion)
                             {
                                 <td class="numero">@Dinero(linea.Coste)</td>
+                                <td>
+                                    @(linea.Lote ?? "—")
+                                    @if (linea.Caducidad is { } cuando)
+                                    {
+                                        <span class="papel">@cuando.ToString("dd/MM/yyyy")</span>
+                                    }
+                                </td>
                             }
                             <td class="acciones">
                                 @if (abierto.Estado is EstadoDeDocumento.Borrador)
@@ -221,6 +241,8 @@ else
     private Guid articuloId;
     private decimal cantidad = 1;
     private decimal coste;
+    private string lote = "";
+    private DateOnly? caducidad;
 
     private string? aviso;
     private bool ocupado;
@@ -255,9 +277,18 @@ else
         numero = concepto = "";
     });
 
+    private bool PorLotes => articulos
+        .FirstOrDefault(articulo => articulo.Id == articuloId)?.LlevaLotes ?? false;
+
     private Task AgregarLinea() => Intentar(async () =>
-        abierto = await trasiego.AgregarLinea(
-            abierto!.Id, new LineaPedida(articuloId, cantidad, coste)));
+    {
+        abierto = await trasiego.AgregarLinea(abierto!.Id, new LineaPedida(
+            articuloId, cantidad, coste,
+            string.IsNullOrWhiteSpace(lote) ? null : lote, caducidad));
+
+        lote = "";
+        caducidad = null;
+    });
 
     private Task QuitarLinea(Guid lineaId) => Intentar(async () =>
         abierto = await trasiego.QuitarLinea(abierto!.Id, lineaId));

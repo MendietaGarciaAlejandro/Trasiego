@@ -67,7 +67,8 @@ public class MovimientosController(ServicioDeMovimientos movimientos) : Controll
         MovimientoVisto.De(await movimientos.RegistrarEntrada(
             peticion.ArticuloId, peticion.AlmacenId,
             Cantidad.De(peticion.Cantidad), Importe.De(peticion.Coste),
-            peticion.FechaContable, peticion.Concepto, cancelacion));
+            peticion.FechaContable, peticion.Concepto,
+            peticion.Lote, peticion.Caducidad, cancelacion));
 
     /// <summary>Registra una salida. El coste no se manda: sale de las capas.</summary>
     [HttpPost("salidas")]
