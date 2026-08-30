@@ -26,9 +26,7 @@ public class CapaDeExistencias
         DateOnly? caducidad = null)
     {
         Id = Guid.CreateVersion7();
-        Lote = string.IsNullOrWhiteSpace(lote)
-            ? null
-            : Comprobar.ComoMucho(lote.Trim(), 40).ToUpperInvariant();
+        Lote = Comprobar.Lote(lote);
         Caducidad = caducidad;
         ArticuloId = articuloId;
         AlmacenId = almacenId;

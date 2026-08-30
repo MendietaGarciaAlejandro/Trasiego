@@ -62,9 +62,12 @@ public class ServicioDeDocumentos(
 
         articulo.ComprobarCantidad(cantidad);
 
-        // Solo en las recepciones: en lo que sale el documento ya se niega a llevar lote, y
-        // exigirselo aqui a una entrega seria pedir un dato que no se puede dar.
-        if (documento.Tipo is TipoDeDocumento.Recepcion) articulo.ComprobarLote(lote);
+        // Al recibir el lote es obligatorio si el articulo lo lleva; al servir es opcional,
+        // porque sin decir nada sale lo que antes caduque.
+        if (documento.Tipo is TipoDeDocumento.Recepcion)
+            articulo.ComprobarLoteQueEntra(lote);
+        else
+            articulo.ComprobarLoteQueSale(lote);
 
         documento.Agregar(articuloId, cantidad, coste, lote, caducidad);
         await documentos.GuardarCambios(cancelacion);

@@ -100,7 +100,7 @@ public class ServicioDeMovimientos(
         DateOnly? caducidad,
         DateOnly fechaContable)
     {
-        articulo.ComprobarLote(lote);
+        articulo.ComprobarLoteQueEntra(lote);
 
         if (caducidad is { } cuando && cuando < fechaContable)
             throw new ReglaDeNegocio(
@@ -115,16 +115,21 @@ public class ServicioDeMovimientos(
     /// <summary>
     /// Registra una salida. El coste no se teclea: sale de vaciar capas por antiguedad.
     /// </summary>
+    /// <param name="lote">
+    /// De que lote servir. Lo normal es no decirlo y que salga lo que antes caduque; se dice
+    /// en una retirada de producto o cuando el cliente exige un lote concreto.
+    /// </param>
     public Task<Movimiento> RegistrarSalida(
         Guid articuloId,
         Guid almacenId,
         Cantidad cantidad,
         DateOnly fechaContable,
         string? concepto = null,
+        string? lote = null,
         CancellationToken cancelacion = default) =>
         unidadDeTrabajo.ConReintentos(
             cancela => Salida(
-                articuloId, almacenId, cantidad, fechaContable, concepto, cancela),
+                articuloId, almacenId, cantidad, fechaContable, concepto, lote, cancela),
             cancelacion);
 
     private async Task<Movimiento> Salida(
@@ -133,6 +138,7 @@ public class ServicioDeMovimientos(
         Cantidad cantidad,
         DateOnly fechaContable,
         string? concepto,
+        string? lote,
         CancellationToken cancelacion)
     {
         var (articulo, almacen, retroactivo) = await Comprobaciones(
@@ -140,7 +146,7 @@ public class ServicioDeMovimientos(
 
         var sale = await Sacar(
             articulo, almacen, cantidad, fechaContable, concepto,
-            MotivoDeMovimiento.Ordinario, retroactivo, cancelacion);
+            MotivoDeMovimiento.Ordinario, retroactivo, cancelacion, lote: lote);
 
         await unidadDeTrabajo.GuardarCambios(cancelacion);
         return sale.Movimiento;
@@ -235,10 +241,11 @@ public class ServicioDeMovimientos(
         Cantidad cantidad,
         DateOnly fechaContable,
         string? concepto = null,
+        string? lote = null,
         CancellationToken cancelacion = default) =>
         unidadDeTrabajo.ConReintentos(
             cancela => Mover(
-                articuloId, origenId, destinoId, cantidad, fechaContable, concepto, cancela),
+                articuloId, origenId, destinoId, cantidad, fechaContable, concepto, lote, cancela),
             cancelacion);
 
     private async Task<Traspaso> Mover(
@@ -248,10 +255,12 @@ public class ServicioDeMovimientos(
         Cantidad cantidad,
         DateOnly fechaContable,
         string? concepto,
+        string? lote,
         CancellationToken cancelacion)
     {
         var traspaso = await MoverUna(
-            articuloId, origenId, destinoId, cantidad, fechaContable, concepto, null, cancelacion);
+            articuloId, origenId, destinoId, cantidad, fechaContable, concepto, null, lote,
+            cancelacion);
 
         // Un unico guardado para las dos mitades: si algo falla, no queda mercancia que ha
         // salido de un almacen y no ha llegado a ninguno.
@@ -267,6 +276,7 @@ public class ServicioDeMovimientos(
         DateOnly fechaContable,
         string? concepto,
         Guid? documentoId,
+        string? lote,
         CancellationToken cancelacion)
     {
         if (origenId == destinoId)
@@ -280,7 +290,7 @@ public class ServicioDeMovimientos(
 
         var sale = await Sacar(
             articulo, origen, cantidad, fechaContable, concepto,
-            MotivoDeMovimiento.Traspaso, saleTarde, cancelacion, documentoId);
+            MotivoDeMovimiento.Traspaso, saleTarde, cancelacion, documentoId, lote);
 
         var salida = sale.Movimiento;
 
@@ -354,7 +364,7 @@ public class ServicioDeMovimientos(
             var traspaso = await MoverUna(
                 linea.ArticuloId, documento.AlmacenId, documento.AlmacenDestinoId!.Value,
                 linea.Cantidad, documento.FechaContable, documento.Concepto, documento.Id,
-                cancelacion);
+                linea.Lote, cancelacion);
 
             return [traspaso.Salida, traspaso.Entrada];
         }
@@ -369,7 +379,7 @@ public class ServicioDeMovimientos(
                 (await Sacar(
                     articulo, almacen, linea.Cantidad, documento.FechaContable,
                     documento.Concepto, MotivoDeMovimiento.Ordinario, retroactivo, cancelacion,
-                    documento.Id)).Movimiento,
+                    documento.Id, linea.Lote)).Movimiento,
             ];
 
         ComprobarLoQueEntra(articulo, linea.Lote, linea.Caducidad, documento.FechaContable);
@@ -602,9 +612,23 @@ public class ServicioDeMovimientos(
         MotivoDeMovimiento motivo,
         bool retroactivo,
         CancellationToken cancelacion,
-        Guid? documentoId = null)
+        Guid? documentoId = null,
+        string? lote = null)
     {
-        var capas = await valoracion.CapasConExistencias(articulo.Id, almacen.Id, cancelacion);
+        articulo.ComprobarLoteQueSale(lote);
+
+        var todas = await valoracion.CapasConExistencias(articulo.Id, almacen.Id, cancelacion);
+
+        // Con un lote pedido se sirve de ese y de ninguno mas. Es lo que hace falta para una
+        // retirada, o para un cliente que exige el mismo lote que la vez anterior.
+        var pedido = Comprobar.Lote(lote);
+        var capas = pedido is null
+            ? todas
+            : [.. todas.Where(capa => capa.Lote == pedido)];
+
+        if (pedido is not null && capas.Count == 0)
+            throw new ReglaDeNegocio(
+                $"En {almacen.Codigo} no queda nada del lote {pedido} de {articulo.Referencia}.");
 
         // Un recuento cuenta lo que hay, y lo caducado tambien esta ahi. Es ademas la unica
         // manera de darlo de baja: no se sirve, pero sigue ocupando sitio y valiendo dinero.
@@ -616,7 +640,7 @@ public class ServicioDeMovimientos(
 
         if (cantidad > disponible && (articulo.LlevaLotes || !almacen.PermiteDescubierto))
             throw new ReglaDeNegocio(
-                NoLlega(articulo, almacen, capas, cantidad, disponible, fechaContable));
+                NoLlega(articulo, almacen, capas, cantidad, disponible, fechaContable, pedido));
 
         var deLasCapas = cantidad <= disponible ? cantidad : disponible;
         var tomas = ConsumoDeCapas.Consumir(capas, deLasCapas, fechaContable, admiteCaducado);
@@ -655,7 +679,8 @@ public class ServicioDeMovimientos(
         IReadOnlyList<CapaDeExistencias> capas,
         Cantidad cantidad,
         Cantidad disponible,
-        DateOnly fechaContable)
+        DateOnly fechaContable,
+        string? lote)
     {
         var unidad = articulo.Unidad.Abreviatura();
 
@@ -663,15 +688,23 @@ public class ServicioDeMovimientos(
             .Where(capa => capa.CaducadaA(fechaContable))
             .Aggregate(Cantidad.Cero, (suma, capa) => suma + capa.CantidadRestante);
 
+        var deQue = lote is null
+            ? $"{articulo.Referencia}"
+            : $"{articulo.Referencia} del lote {lote}";
+
         var queja =
-            $"No hay bastante {articulo.Referencia} en {almacen.Codigo}: " +
+            $"No hay bastante {deQue} en {almacen.Codigo}: " +
             $"quedan {disponible} {unidad} y se piden {cantidad}.";
 
         if (!caducado.EsCero)
             queja += $" Hay {caducado} {unidad} mas, pero estan caducadas y no se sirven.";
 
-        if (articulo.LlevaLotes)
-            queja += " Y un articulo con lotes no sale sin estar: no habria lote del que sacarlo.";
+        // Solo donde explica algo: si el almacen no admite descubierto de todas formas, decir
+        // ademas que los lotes tampoco lo admiten es alargar la queja sin añadir nada.
+        if (articulo.LlevaLotes && almacen.PermiteDescubierto)
+            queja +=
+                $" {almacen.Codigo} admite servir sin tener genero, pero un articulo con lotes " +
+                "no sale sin estar: no habria lote del que sacarlo.";
 
         return queja;
     }

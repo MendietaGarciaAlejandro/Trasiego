@@ -143,7 +143,8 @@ public record SalidaPedida(
     Guid AlmacenId,
     decimal Cantidad,
     DateOnly FechaContable,
-    string? Concepto = null);
+    string? Concepto = null,
+    string? Lote = null);
 
 public record DevolucionPedida(
     Guid SalidaId,
@@ -157,7 +158,8 @@ public record TraspasoPedido(
     Guid DestinoId,
     decimal Cantidad,
     DateOnly FechaContable,
-    string? Concepto = null);
+    string? Concepto = null,
+    string? Lote = null);
 
 public record TraspasoVisto(MovimientoVisto Salida, MovimientoVisto Entrada);
 

@@ -107,9 +107,8 @@ public class Documento
     {
         SoloEnBorrador();
 
-        // En una recepcion el coste y el lote vienen del papel. En lo que sale no se teclean:
-        // el coste lo pone la valoracion y el lote tambien, sacando primero lo que antes
-        // caduque. Aceptarlos aqui daria a entender que sirven para algo.
+        // En una recepcion el coste viene del papel. En lo que sale no se teclea: lo pone la
+        // valoracion, y aceptarlo aqui daria a entender que sirve para algo.
         if (Tipo is TipoDeDocumento.Recepcion)
         {
             if (coste < Importe.Cero)
@@ -120,11 +119,13 @@ public class Documento
             throw new ReglaDeNegocio(
                 "Solo las recepciones llevan coste: en lo que sale lo pone la valoracion.");
         }
-        else if (!string.IsNullOrWhiteSpace(lote) || caducidad is not null)
-        {
+
+        // El lote si vale en cualquier papel, pero no significa lo mismo: en una recepcion
+        // dice de que lote llega la mercancia, y en lo que sale, de cual hay que servir.
+        // La caducidad solo la trae lo que entra: al servir no se declara, ya viene puesta.
+        if (Tipo is not TipoDeDocumento.Recepcion && caducidad is not null)
             throw new ReglaDeNegocio(
-                "Solo las recepciones dicen el lote: en lo que sale sale primero lo que antes caduca.");
-        }
+                "Solo las recepciones dicen la caducidad: la de lo que sale ya viene con el lote.");
 
         var linea = new LineaDeDocumento(
             Id, _lineas.Count, articuloId, cantidad, coste, lote, caducidad);
@@ -182,9 +183,7 @@ public class LineaDeDocumento
         DocumentoId = documentoId;
         Orden = orden;
         ArticuloId = articuloId;
-        Lote = string.IsNullOrWhiteSpace(lote)
-            ? null
-            : Comprobar.ComoMucho(lote.Trim(), 40).ToUpperInvariant();
+        Lote = Comprobar.Lote(lote);
         Caducidad = caducidad;
         Cantidad = cantidad.EsCero
             ? throw new ReglaDeNegocio("Una linea de cantidad cero no mueve nada.")

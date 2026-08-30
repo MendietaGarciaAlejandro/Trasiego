@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Trasiego.Aplicacion.Abstracciones;
 using Trasiego.Aplicacion.Cierres;
 using Trasiego.Aplicacion.Documentos;
@@ -155,7 +155,7 @@ public static class SembradorDeDesarrollo
 
         await movimientos.Traspasar(
             pintura.Id, central.Id, obra.Id, Cantidad.De(5), Dia(26),
-            "reparto a la obra", cancelacion);
+            "reparto a la obra", cancelacion: cancelacion);
 
         // Ocho botes con cinco en el almacen: la obra queda debiendo tres, valorados al ultimo
         // precio que se conoce. Esto solo lo permite un almacen marcado para ello.

@@ -107,8 +107,10 @@
             @if (PorLotes)
             {
                 <text>
-                    El lote solo lo dice lo que entra: en lo que sale lo decide la valoracion,
-                    que vacia primero lo que antes caduque.
+                    El lote significa dos cosas segun el boton: en una entrada, de que lote
+                    llega; en una salida o un traspaso, de cual servir. Dejandolo en blanco al
+                    servir sale lo que antes caduque, que es lo normal. La caducidad solo la
+                    trae lo que entra.
                 </text>
             }
         </p>
@@ -231,14 +233,13 @@ else
     }
 
     private Task Entrada() => Registrar(() => trasiego.Entrada(new EntradaPedida(
-        articuloId, almacenId, cantidad, coste, fecha, Concepto(),
-        string.IsNullOrWhiteSpace(lote) ? null : lote, caducidad)));
+        articuloId, almacenId, cantidad, coste, fecha, Concepto(), Lote(), caducidad)));
 
-    private Task Salida() => Registrar(() => trasiego.Salida(
-        new SalidaPedida(articuloId, almacenId, cantidad, fecha, Concepto())));
+    private Task Salida() => Registrar(() => trasiego.Salida(new SalidaPedida(
+        articuloId, almacenId, cantidad, fecha, Concepto(), Lote())));
 
-    private Task Traspasar() => Registrar(() => trasiego.Traspaso(
-        new TraspasoPedido(articuloId, almacenId, destinoId, cantidad, fecha, Concepto())));
+    private Task Traspasar() => Registrar(() => trasiego.Traspaso(new TraspasoPedido(
+        articuloId, almacenId, destinoId, cantidad, fecha, Concepto(), Lote())));
 
     private async Task Registrar(Func<Task> movimiento)
     {
@@ -263,6 +264,8 @@ else
     }
 
     private string? Concepto() => string.IsNullOrWhiteSpace(concepto) ? null : concepto;
+
+    private string? Lote() => string.IsNullOrWhiteSpace(lote) ? null : lote;
 
     private static string Titulo(LineaDeKardex linea) => linea.Concepto ?? linea.Motivo switch
     {

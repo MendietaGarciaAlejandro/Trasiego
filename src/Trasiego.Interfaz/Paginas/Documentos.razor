@@ -99,13 +99,17 @@
                         Coste de la linea
                         <input type="number" step="0.01" @bind="coste" />
                     </label>
+                }
 
-                    @if (PorLotes)
+                @if (PorLotes)
+                {
+                    <label>
+                        Lote
+                        <input @bind="lote" placeholder="L-2026-04" />
+                    </label>
+
+                    @if (abierto.Tipo is TipoDeDocumento.Recepcion)
                     {
-                        <label>
-                            Lote
-                            <input @bind="lote" placeholder="L-2026-04" />
-                        </label>
                         <label>
                             Caduca
                             <input type="date" @bind="caducidad" />
@@ -142,11 +146,10 @@
                         @if (abierto.Tipo is TipoDeDocumento.Recepcion)
                         {
                             <th class="numero">Coste</th>
-
-                            @if (ConLote)
-                            {
-                                <th>Lote</th>
-                            }
+                        }
+                        @if (ConLote)
+                        {
+                            <th>Lote</th>
                         }
                         @if (abierto.Estado is EstadoDeDocumento.Borrador)
                         {
@@ -163,17 +166,16 @@
                             @if (abierto.Tipo is TipoDeDocumento.Recepcion)
                             {
                                 <td class="numero">@Dinero(linea.Coste)</td>
-
-                                @if (ConLote)
-                                {
-                                    <td>
-                                        @linea.Lote
-                                        @if (linea.Caducidad is { } cuando)
-                                        {
-                                            <span class="papel">@cuando.ToString("dd/MM/yyyy")</span>
-                                        }
-                                    </td>
-                                }
+                            }
+                            @if (ConLote)
+                            {
+                                <td>
+                                    @linea.Lote
+                                    @if (linea.Caducidad is { } cuando)
+                                    {
+                                        <span class="papel">@cuando.ToString("dd/MM/yyyy")</span>
+                                    }
+                                </td>
                             }
                             @if (abierto.Estado is EstadoDeDocumento.Borrador)
                             {
@@ -299,7 +301,8 @@ else
     {
         abierto = await trasiego.AgregarLinea(abierto!.Id, new LineaPedida(
             articuloId, cantidad, coste,
-            string.IsNullOrWhiteSpace(lote) ? null : lote, caducidad));
+            string.IsNullOrWhiteSpace(lote) ? null : lote,
+            abierto.Tipo is TipoDeDocumento.Recepcion ? caducidad : null));
 
         lote = "";
         caducidad = null;

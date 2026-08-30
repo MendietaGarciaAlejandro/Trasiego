@@ -88,7 +88,7 @@ autenticación integrada: ahí no hay ningún secreto que guardar, porque no lle
 contraseña. La clave de firma sí, y por eso va en user-secrets; sin ella la Api se niega a
 arrancar y dice el comando.
 
-`dotnet test` ejecuta todo, unos 179 tests. Los de dominio no tocan la base de datos y son
+`dotnet test` ejecuta todo, unos 187 tests. Los de dominio no tocan la base de datos y son
 instantáneos; los de integración crean una base suya en LocalDB al empezar y la borran al
 terminar, y los de la Api levantan la aplicación entera con `WebApplicationFactory`.
 
@@ -600,6 +600,22 @@ No se sirve un lote que no se tiene: no habría número que poner en el albarán
 restricción menor y resulta ser la pieza que sostiene todo lo demás — ver lo del recálculo,
 más abajo.
 
+### Al servir, el lote se puede pedir; al recibir hay que decirlo
+
+Son dos cosas distintas con el mismo nombre. Una entrada **declara** de qué lote llega la
+mercancía, y es obligatorio: sin eso entraría material sin poder decir de dónde viene. Una
+salida **pide** de cuál servir, y es opcional: lo normal es no decir nada y que salga lo que
+antes caduque.
+
+Decirlo es para dos casos concretos: una retirada de producto, donde hay que apartar un lote
+aunque sea el que menos prisa tiene, y un cliente que exige el mismo lote que la vez anterior.
+Vale igual en una salida suelta, en un traspaso —así se manda un lote a cuarentena sin tocar
+el resto— y en una línea de un albarán de entrega.
+
+Pedir un lote por su nombre **no lo hace apto**. Si está caducado sigue sin servirse: para
+sacar lo caducado está el recuento. Y la caducidad solo la trae lo que entra; al servir ya
+viene puesta con el lote.
+
 ### Lotes y precio medio son incompatibles
 
 A precio medio todas las entradas caen en la capa que ya estaba abierta, y esa capa es
@@ -637,7 +653,7 @@ número, su caducidad y la parte del coste que le toca. La mercancía llega repa
 
 ## Por dónde ha ido
 
-El plan eran doce fases, y después salieron nueve cosas más de las que fueron apareciendo por
+El plan eran doce fases, y después salieron diez cosas más de las que fueron apareciendo por
 el camino.
 
 1. **Andamiaje.** Capas, SQL Server, `Cantidad` e `Importe` con sus reglas de redondeo.
@@ -665,15 +681,20 @@ el camino.
 20. **Lotes y caducidades.** FEFO, lo caducado que no se sirve, y los lotes cruzando los
     traspasos.
 21. **Que se vea.** Un almacén de demostración sembrado al arrancar, y capturas.
+22. **Servir un lote concreto.** Para una retirada, o para el cliente que exige el mismo
+    lote de siempre.
 
 De todo eso, las fases 3 a 9 son el proyecto de verdad: lo demás es lo que hace falta para
 poder verlo.
 
 ## Siguientes pasos
 
-Lo que se me ocurre a partir de aquí, por orden de ganas:
+Nada, y es a propósito. Lo que queda por hacer ya no es Trasiego: multiempresa, contabilidad,
+compras y ventas, ubicaciones dentro del almacén. Están fuera del alcance desde la primera
+línea de este README, y meterlos convertiría un proyecto con una idea clara en un ERP genérico
+a medio hacer.
 
-- **Servir un lote concreto.** Hoy la salida es siempre automática, por caducidad. Para una
-  retirada de producto, o cuando el cliente exige un lote, hace falta poder decir cuál. No
-  tiene dificultad de fondo —es filtrar las capas antes de consumirlas—; lo que cuesta es
-  arrastrar el dato por la Api, las líneas de documento y la pantalla.
+Lo que sí haría si esto se usara de verdad es medir antes de tocar nada: el saldo se calcula
+sumando movimientos, y ese `GROUP BY` crece con el histórico. La tabla de existencias
+mantenida aparte está descartada arriba por una razón —es otra cosa que puede dejar de
+cuadrar—, así que antes de meterla habría que tener el número que la justifique.

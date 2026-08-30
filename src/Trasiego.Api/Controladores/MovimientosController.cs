@@ -70,14 +70,17 @@ public class MovimientosController(ServicioDeMovimientos movimientos) : Controll
             peticion.FechaContable, peticion.Concepto,
             peticion.Lote, peticion.Caducidad, cancelacion));
 
-    /// <summary>Registra una salida. El coste no se manda: sale de las capas.</summary>
+    /// <summary>
+    /// Registra una salida. El coste no se manda: sale de las capas. El lote es opcional; sin
+    /// el sale lo que antes caduque.
+    /// </summary>
     [HttpPost("salidas")]
     public async Task<MovimientoVisto> Salida(
         SalidaPedida peticion,
         CancellationToken cancelacion) =>
         MovimientoVisto.De(await movimientos.RegistrarSalida(
             peticion.ArticuloId, peticion.AlmacenId, Cantidad.De(peticion.Cantidad),
-            peticion.FechaContable, peticion.Concepto, cancelacion));
+            peticion.FechaContable, peticion.Concepto, peticion.Lote, cancelacion));
 
     /// <summary>Devuelve parte de una salida, al coste al que salio.</summary>
     [HttpPost("devoluciones")]
@@ -100,7 +103,7 @@ public class MovimientosController(ServicioDeMovimientos movimientos) : Controll
         var traspaso = await movimientos.Traspasar(
             peticion.ArticuloId, peticion.OrigenId, peticion.DestinoId,
             Cantidad.De(peticion.Cantidad), peticion.FechaContable, peticion.Concepto,
-            cancelacion);
+            peticion.Lote, cancelacion);
 
         return new TraspasoVisto(
             MovimientoVisto.De(traspaso.Salida), MovimientoVisto.De(traspaso.Entrada));

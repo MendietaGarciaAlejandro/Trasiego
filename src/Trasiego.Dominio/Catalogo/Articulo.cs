@@ -78,13 +78,23 @@ public class Articulo(
     }
 
     /// <summary>
-    /// Comprueba que lo que se declara en una entrada encaja con como se lleva el articulo.
+    /// El lote que declara una entrada. Si el articulo se lleva por lotes es obligatorio: sin
+    /// el, la mercancia entraria sin poder decir de donde viene.
     /// </summary>
-    public void ComprobarLote(string? lote)
+    public void ComprobarLoteQueEntra(string? lote)
     {
         if (LlevaLotes && string.IsNullOrWhiteSpace(lote))
             throw new ReglaDeNegocio($"{Referencia} se lleva por lotes: falta decir de cual es.");
 
+        ComprobarLoteQueSale(lote);
+    }
+
+    /// <summary>
+    /// El lote que se pide al servir, que es opcional: lo normal es no decir nada y que salga
+    /// lo que antes caduque. Decirlo es para una retirada o para un cliente que lo exige.
+    /// </summary>
+    public void ComprobarLoteQueSale(string? lote)
+    {
         if (!LlevaLotes && !string.IsNullOrWhiteSpace(lote))
             throw new ReglaDeNegocio($"{Referencia} no se lleva por lotes.");
     }
