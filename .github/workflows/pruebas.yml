@@ -1,0 +1,46 @@
+name: Pruebas
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  pruebas:
+    # En Windows porque el escritorio es WPF y los tests de integracion quieren SQL Server
+    # de verdad. La imagen trae las dos cosas, asi que no hace falta montar nada.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # LocalDB viene instalado pero su instancia por defecto no viene arrancada.
+      - name: Arrancar LocalDB
+        run: sqllocaldb start MSSQLLocalDB
+
+      - name: Restaurar
+        run: |
+          dotnet tool restore
+          dotnet restore
+
+      - name: Compilar
+        run: dotnet build --no-restore -c Release
+
+      # Que el modelo y las migraciones digan lo mismo. Es el despiste facil: cambiar una
+      # entidad, que compile, que los tests pasen contra la base de datos que ya tenias
+      # creada, y que el despliegue se encuentre con una columna que no existe.
+      - name: Comprobar que no faltan migraciones
+        env:
+          Jwt__Clave: no-firma-nada-esto-solo-arranca-para-mirar-el-modelo
+        run: >
+          dotnet ef migrations has-pending-model-changes
+          --project src/Trasiego.Infraestructura
+          --startup-project src/Trasiego.Api
+          --no-build --configuration Release
+
+      - name: Pruebas
+        run: dotnet test --no-build -c Release

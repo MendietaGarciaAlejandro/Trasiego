@@ -1,5 +1,7 @@
 # Trasiego
 
+[![Pruebas](https://github.com/MendietaGarciaAlejandro/Trasiego/actions/workflows/pruebas.yml/badge.svg)](https://github.com/MendietaGarciaAlejandro/Trasiego/actions/workflows/pruebas.yml)
+
 ERP de inventario con valoración. Un trasiego es pasar algo de un recipiente a otro, que es
 literalmente lo que hace un movimiento de existencias.
 
@@ -53,6 +55,12 @@ arrancar y dice el comando.
 `dotnet test` ejecuta todo, unos 161 tests. Los de dominio no tocan la base de datos y son
 instantáneos; los de integración crean una base suya en LocalDB al empezar y la borran al
 terminar, y los de la Api levantan la aplicación entera con `WebApplicationFactory`.
+
+En cada push corre lo mismo en GitHub Actions, sobre Windows: ahí están a la vez el WPF del
+escritorio y el SQL Server que quieren los tests de integración, así que no hay que montar
+nada. Antes de los tests comprueba que el modelo y las migraciones dicen lo mismo, que es el
+despiste fácil: cambias una entidad, compila, los tests pasan contra la base de datos que ya
+tenías creada, y el despliegue se encuentra con una columna que no existe.
 
 ## Alcance
 
@@ -521,7 +529,7 @@ desde un contexto limpio aposta, que es lo único que comprueba de verdad la res
 
 ## Por dónde ha ido
 
-El plan eran doce fases, y después salieron seis cosas más de las que fueron apareciendo por
+El plan eran doce fases, y después salieron siete cosas más de las que fueron apareciendo por
 el camino.
 
 1. **Andamiaje.** Capas, SQL Server, `Cantidad` e `Importe` con sus reglas de redondeo.
@@ -544,6 +552,8 @@ el camino.
 17. **Documentos.** Un albarán con sus líneas, que se registra entero o no se registra.
 18. **Quién.** Cada movimiento se queda con el usuario que lo registró, y el kardex lo
     enseña.
+19. **Integración continua.** Compilar, comprobar las migraciones y pasar los tests en cada
+    push.
 
 De todo eso, las fases 3 a 9 son el proyecto de verdad: lo demás es lo que hace falta para
 poder verlo.

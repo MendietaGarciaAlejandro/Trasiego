@@ -65,11 +65,12 @@ public class QuienRegistraTests(BaseDeDatosDePruebas baseDeDatos)
         var (articulo, almacen) = await Escenario.Catalogo(contexto);
         var quien = await Alguien(contexto);
 
+        // Dias distintos aposta: cada servicio se monta con su reloj, asi que dos entradas
+        // del mismo dia caerian en el mismo instante y el orden lo decidiria el azar del id.
         await Escenario.Servicio(contexto, quien.Id).RegistrarEntrada(
-            articulo.Id, almacen.Id, Cantidad.De(10), Importe.De(20m), Escenario.Hoy);
+            articulo.Id, almacen.Id, Cantidad.De(10), Importe.De(20m), Escenario.Hoy.AddDays(-1));
 
-        // Y uno sin nadie detras, de los que puede meter un proceso o los que quedaron de
-        // antes de que hubiera usuarios.
+        // Y uno sin nadie detras, de los que quedaron de antes de que hubiera usuarios.
         await Escenario.Servicio(contexto).RegistrarEntrada(
             articulo.Id, almacen.Id, Cantidad.De(1), Importe.De(3m), Escenario.Hoy);
 
